@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Minhas Finanças</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        input, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #2c7be5;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .total {
+            font-weight: bold;
+            text-align: right;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Minhas Finanças</h1>
+
+    <form id="form-despesa">
+        <input type="text" id="texto" placeholder="Descrição (ex: gastei 20 no mercado)" required>
+        <input type="number" id="valor" step="0.01" placeholder="Valor (€)" required>
+        <button type="submit">Adicionar despesa</button>
+    </form>
+
+    <ul id="lista-despesas"></ul>
+    <div class="total" id="total"></div>
+
+    <script>
+        const API_URL = "http://127.0.0.1:8000";
+
+        async function carregarDespesas() {
+            const resposta = await fetch(`${API_URL}/despesas`);
+            const despesas = await resposta.json();
+
+            const lista = document.getElementById("lista-despesas");
+            lista.innerHTML = "";
+
+            let total = 0;
+            despesas.forEach(d => {
+                const item = document.createElement("li");
+                item.innerHTML = `<span>${d.descricao} (${d.categoria})</span><span>${d.valor.toFixed(2)}€</span>`;
+                lista.appendChild(item);
+                total += d.valor;
+            });
+
+            document.getElementById("total").textContent = `Total: ${total.toFixed(2)}€`;
+        }
+
+        document.getElementById("form-despesa").addEventListener("submit", async (evento) => {
+            evento.preventDefault();
+
+            const texto = document.getElementById("texto").value;
+            const valor = parseFloat(document.getElementById("valor").value);
+
+            await fetch(`${API_URL}/despesas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ texto, valor })
+            });
+
+            document.getElementById("form-despesa").reset();
+            carregarDespesas();
+        });
+
+        carregarDespesas();
+    </script>
+
+</body>
+</html>

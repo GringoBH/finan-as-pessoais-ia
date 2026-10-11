@@ -1,0 +1,27 @@
+[
+    {
+        "descricao": "Pizza 10\u20ac",
+        "valor": 10.0,
+        "categoria": "Comida"
+    },
+    {
+        "descricao": "Pizza 10\u20ac",
+        "valor": 10.0,
+        "categoria": "Comida"
+    },
+    {
+        "descricao": "Cerveja 5\u20ac",
+        "valor": 5.0,
+        "categoria": "Comida"
+    },
+    {
+        "descricao": "Pizza 10",
+        "valor": 10.0,
+        "categoria": "Comida"
+    },
+    {
+        "descricao": "0.80 no cafe",
+        "valor": 0.8,
+        "categoria": "Categoria de teste"
+    }
+]
