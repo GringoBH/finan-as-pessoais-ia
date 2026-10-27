@@ -34,6 +34,15 @@ def criar_despesa(entrada: DespesaEntrada):
 def listar_despesas():
     todas = repositorio.listar()
     return [
-        {"descricao": d.descricao, "valor": d.valor, "categoria": d.categoria}
+        {
+            "descricao": d.descricao,
+            "valor": d.valor,
+            "categoria": d.categoria,
+            "data_hora": d.data_hora.isoformat(),
+            "dia_semana": d.data_hora.strftime("%A"),
+            "semana_ano": d.data_hora.isocalendar()[1],
+            "mes": d.data_hora.month,
+            "ano": d.data_hora.year,
+        }
         for d in todas
     ]

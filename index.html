@@ -44,6 +44,19 @@
             text-align: right;
             margin-top: 10px;
         }
+        table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+th, td {
+    text-align: left;
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+}
+th {
+    background-color: #f0f0f0;
+}
     </style>
 </head>
 <body>
@@ -56,47 +69,44 @@
         <button type="submit">Adicionar despesa</button>
     </form>
 
-    <ul id="lista-despesas"></ul>
+    <table id="tabela-despesas">
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Descrição/th>
+                <th>Categoria</th>
+                <th>Valor</th>
+            </tr>
+        </thead>
+        <tbody id="corpo-tabela"></tbody>
+    </table>
     <div class="total" id="total"></div>
-
     <script>
-        const API_URL = "http://127.0.0.1:8000";
+        const API_URL = "https://finan-as-pessoais-ia.onrender.com/docs"
 
         async function carregarDespesas() {
-            const resposta = await fetch(`${API_URL}/despesas`);
-            const despesas = await resposta.json();
+    const resposta = await fetch(`${API_URL}/despesas`);
+    const despesas = await resposta.json();
 
-            const lista = document.getElementById("lista-despesas");
-            lista.innerHTML = "";
+    const corpo = document.getElementById("corpo-tabela");
+    corpo.innerHTML = "";
 
-            let total = 0;
-            despesas.forEach(d => {
-                const item = document.createElement("li");
-                item.innerHTML = `<span>${d.descricao} (${d.categoria})</span><span>${d.valor.toFixed(2)}€</span>`;
-                lista.appendChild(item);
-                total += d.valor;
-            });
+    let total = 0;
+    despesas.forEach(d => {
+        const linha = document.createElement("tr");
+        const dataFormatada = new Date(d.data_hora).toLocaleDateString("pt-BR");
+        linha.innerHTML = `
+            <td>${dataFormatada}</td>
+            <td>${d.descricao}</td>
+            <td>${d.categoria}</td>
+            <td>${d.valor.toFixed(2)}€</td>
+        `;
+        corpo.appendChild(linha);
+        total += d.valor;
+    });
 
-            document.getElementById("total").textContent = `Total: ${total.toFixed(2)}€`;
-        }
-
-        document.getElementById("form-despesa").addEventListener("submit", async (evento) => {
-            evento.preventDefault();
-
-            const texto = document.getElementById("texto").value;
-            const valor = parseFloat(document.getElementById("valor").value);
-
-            await fetch(`${API_URL}/despesas`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ texto, valor })
-            });
-
-            document.getElementById("form-despesa").reset();
-            carregarDespesas();
-        });
-
-        carregarDespesas();
+    document.getElementById("total").textContent = `Total: ${total.toFixed(2)}€`;
+}
     </script>
 
 </body>
