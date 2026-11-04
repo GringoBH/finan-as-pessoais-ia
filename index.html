@@ -82,32 +82,61 @@ th {
     </table>
     <div class="total" id="total"></div>
     <script>
-        const API_URL = "https://finan-as-pessoais-ia.onrender.com/docs"
+<script>
+    const API_URL = "https://finan-as-pessoais-ia.onrender.com";
 
-        async function carregarDespesas() {
-    const resposta = await fetch(`${API_URL}/despesas`);
-    const despesas = await resposta.json();
+    async function carregarDespesas() {
+        const resposta = await fetch(`${API_URL}/despesas`);
+        const despesas = await resposta.json();
 
-    const corpo = document.getElementById("corpo-tabela");
-    corpo.innerHTML = "";
+        const corpo = document.getElementById("corpo-tabela");
+        corpo.innerHTML = "";
 
-    let total = 0;
-    despesas.forEach(d => {
-        const linha = document.createElement("tr");
-        const dataFormatada = new Date(d.data_hora).toLocaleDateString("pt-BR");
-        linha.innerHTML = `
-            <td>${dataFormatada}</td>
-            <td>${d.descricao}</td>
-            <td>${d.categoria}</td>
-            <td>${d.valor.toFixed(2)}€</td>
-        `;
-        corpo.appendChild(linha);
-        total += d.valor;
+        let total = 0;
+        despesas.forEach(d => {
+            const linha = document.createElement("tr");
+            const dataFormatada = new Date(d.data_hora).toLocaleDateString("pt-BR");
+            linha.innerHTML = `
+                <td>${dataFormatada}</td>
+                <td>${d.descricao}</td>
+                <td>${d.categoria}</td>
+                <td>${d.valor.toFixed(2)}€</td>
+            `;
+            corpo.appendChild(linha);
+            total += d.valor;
+        });
+
+        document.getElementById("total").textContent = `Total: ${total.toFixed(2)}€`;
+    }
+
+    document.getElementById("form-despesa").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+
+        const texto = document.getElementById("texto").value;
+        const valor = parseFloat(document.getElementById("valor").value);
+
+        try {
+            const resposta = await fetch(`${API_URL}/despesas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ texto, valor })
+            });
+
+            if (!resposta.ok) {
+                const erro = await resposta.text();
+                alert(`Erro ${resposta.status}: ${erro}`);
+                return;
+            }
+
+            document.getElementById("form-despesa").reset();
+            carregarDespesas();
+        } catch (e) {
+            alert("Não consegui falar com o servidor: " + e.message);
+        }
     });
 
-    document.getElementById("total").textContent = `Total: ${total.toFixed(2)}€`;
-}
-    </script>
+    carregarDespesas();
+</script>
 
 </body>
 </html>
