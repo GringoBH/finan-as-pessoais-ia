@@ -10,7 +10,7 @@ from ia import ClassificadorIA
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://gringobh.github.io"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
