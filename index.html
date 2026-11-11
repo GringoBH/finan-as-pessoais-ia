@@ -10,18 +10,33 @@
   table { width: 100%; border-collapse: collapse; margin-top: 15px; }
   th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
   th { background: #f0f0f0; }
-  #erro { color: red; }
+  a { color: #06c; cursor: pointer; text-decoration: underline; }
+  small { color: #666; }
+  .erro { color: red; }
 </style>
 </head>
 <body>
 <h1>Minhas Finanças</h1>
 
 <div id="telaLogin">
-  <input id="email" type="email" placeholder="Email"><br>
-  <input id="senha" type="password" placeholder="Senha (mín. 6)"><br>
-  <button onclick="entrar('/login')">Entrar</button>
-  <button onclick="entrar('/registro')">Criar conta</button>
-  <p id="erro"></p>
+  <h3>Entrar</h3>
+  <input id="loginUser" placeholder="Usuário"><br>
+  <input id="loginSenha" type="password" placeholder="Senha"><br>
+  <button onclick="entrar()">Entrar</button>
+  <p>Não tem conta? <a onclick="trocarTela('cadastro')">Criar conta</a></p>
+  <p id="erroLogin" class="erro"></p>
+</div>
+
+<div id="telaCadastro" style="display:none">
+  <h3>Criar conta</h3>
+  <input id="cadUser" placeholder="Usuário (mín. 3, sem espaços)"><br>
+  <input id="cadEmail" type="email" placeholder="Email (opcional)"><br>
+  <small>O email servirá para recuperar a senha no futuro.</small><br>
+  <input id="cadSenha" type="password" placeholder="Senha (mín. 6)"><br>
+  <input id="cadSenha2" type="password" placeholder="Repetir senha"><br>
+  <button onclick="cadastrar()">Criar conta</button>
+  <p>Já tem conta? <a onclick="trocarTela('login')">Entrar</a></p>
+  <p id="erroCadastro" class="erro"></p>
 </div>
 
 <div id="telaApp" style="display:none">
@@ -42,11 +57,21 @@
 const API_URL = "https://finan-as-pessoais-ia.onrender.com";
 const $ = (id) => document.getElementById(id);
 
+function trocarTela(tela) {
+  $("telaLogin").style.display = tela === "login" ? "block" : "none";
+  $("telaCadastro").style.display = tela === "cadastro" ? "block" : "none";
+  $("telaApp").style.display = tela === "app" ? "block" : "none";
+  $("erroLogin").textContent = "";
+  $("erroCadastro").textContent = "";
+}
+
 function mostrar() {
-  const logado = !!localStorage.getItem("token");
-  $("telaLogin").style.display = logado ? "none" : "block";
-  $("telaApp").style.display = logado ? "block" : "none";
-  if (logado) carregarDespesas();
+  if (localStorage.getItem("token")) {
+    trocarTela("app");
+    carregarDespesas();
+  } else {
+    trocarTela("login");
+  }
 }
 
 function sair() {
@@ -65,19 +90,31 @@ async function chamar(caminho, opcoes = {}) {
   return dados;
 }
 
-async function entrar(caminho) {
-  $("erro").textContent = "A processar... (se demorar, o servidor está a acordar)";
+async function enviarAcesso(caminho, corpo, idErro) {
+  $(idErro).textContent = "A processar... (se demorar, o servidor está a acordar)";
   try {
-    const dados = await chamar(caminho, {
-      method: "POST",
-      body: JSON.stringify({ email: $("email").value, senha: $("senha").value }),
-    });
+    const dados = await chamar(caminho, { method: "POST", body: JSON.stringify(corpo) });
     localStorage.setItem("token", dados.token);
-    $("erro").textContent = "";
     mostrar();
   } catch (e) {
-    $("erro").textContent = e.message;
+    $(idErro).textContent = e.message;
   }
+}
+
+function entrar() {
+  enviarAcesso("/login", { login: $("loginUser").value, senha: $("loginSenha").value }, "erroLogin");
+}
+
+function cadastrar() {
+  if ($("cadSenha").value !== $("cadSenha2").value) {
+    $("erroCadastro").textContent = "As senhas não coincidem";
+    return;
+  }
+  enviarAcesso("/registro", {
+    login: $("cadUser").value,
+    email: $("cadEmail").value,
+    senha: $("cadSenha").value,
+  }, "erroCadastro");
 }
 
 async function carregarDespesas() {

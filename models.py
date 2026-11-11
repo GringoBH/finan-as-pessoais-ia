@@ -8,7 +8,8 @@ class Usuario(Base):
     __tablename__ = "usuarios"
 
     id = Column(Integer, primary_key=True)
-    email = Column(String, unique=True, nullable=False)
+    login = Column(String, unique=True, nullable=False)
+    email = Column(String, nullable=True)
     senha_hash = Column(String, nullable=False)
     token = Column(String, nullable=True)
 
