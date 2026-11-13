@@ -171,12 +171,12 @@ class RepositorioDespesas:
     # Usuários
     # ------------------------------------------------------------------
     def usuario_por_login(self, login: str):
-        with self.Session() as session:
-            return session.query(Usuario).filter_by(login=login).first()
+        with self.Session() as session:  # sem diferenciar maiúsculas (contas antigas usam o email)
+            return session.query(Usuario).filter(func.lower(Usuario.login) == login.strip().lower()).first()
 
     def usuario_por_email(self, email: str):
         with self.Session() as session:
-            return session.query(Usuario).filter_by(email=email).first()
+            return session.query(Usuario).filter(func.lower(Usuario.email) == email.strip().lower()).first()
 
     def usuario_por_token(self, token: str):
         with self.Session() as session:

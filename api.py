@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import RepositorioDespesas
 from models import Despesa, Usuario
-from ia import ClassificadorIA
+from ia import ClassificadorIA, CATEGORIAS, categoria_valida
 
 app = FastAPI()
 app.add_middleware(
@@ -35,7 +35,11 @@ PREFERENCIAS_VALIDAS = {"tema": ("auto", "claro", "escuro"), "por_pagina": (10, 
                         "aba_inicial": ("registros", "resumo"),
                         "formato_data": ("dmy", "mdy", "ymd"), "semana_inicio": ("seg", "dom")}
 FOTO_MAX = 200_000  # caracteres do data URL (~150 KB)
-MOEDAS = ("EUR", "BRL", "USD", "GBP")  # moedas aceitas; para ampliar, acrescente códigos aqui
+MOEDAS_FIAT = ("EUR", "BRL", "USD", "GBP")  # moedas comuns (podem ser a moeda padrão)
+# moedas digitais: código -> id no CoinGecko
+MOEDAS_CRIPTO = {"BTC": "bitcoin", "ETH": "ethereum", "USDT": "tether",
+                 "SOL": "solana", "XRP": "ripple", "BNB": "binancecoin"}
+MOEDAS = MOEDAS_FIAT + tuple(MOEDAS_CRIPTO)  # aceitas nos gastos
 
 
 # ----------------------------------------------------------------------
@@ -46,6 +50,7 @@ class DespesaEntrada(BaseModel):
     valor: float
     data: str | None = None  # "AAAA-MM-DD"; se vier vazio, usa o momento atual
     moeda: str | None = None  # se vier vazio, usa a moeda padrão do usuário
+    categoria: str | None = None  # se vier vazio, a IA escolhe
 
 class LoginEntrada(BaseModel):
     login: str
@@ -160,28 +165,57 @@ def data_hora_da_entrada(data: str | None) -> datetime:
         raise HTTPException(status_code=400, detail="Data inválida")
     return dia.replace(hour=12)  # meio-dia UTC, para o dia não mudar entre fusos
 
-_cotacoes = {"quando": 0.0, "dados": None}
+_cotacoes = {"fiat": {"quando": 0.0, "taxas": None, "data": None},
+             "cripto": {"quando": 0.0, "taxas": None}}
 
-def buscar_cotacoes() -> dict:
-    """Cotações do dia (base EUR) via Frankfurter. Guarda 6 horas; se a fonte falhar, usa a última guardada."""
-    if _cotacoes["dados"] and time.time() - _cotacoes["quando"] < 6 * 3600:
-        return _cotacoes["dados"]
-    outras = ",".join(m for m in MOEDAS if m != "EUR")
+def _baixar_json(url: str) -> dict:
+    pedido = urllib.request.Request(url, headers={"User-Agent": "minhas-financas/1.0", "Accept": "application/json"})
+    with urllib.request.urlopen(pedido, timeout=6) as r:
+        return json.load(r)
+
+def _atualizar_fiat() -> None:
+    """Moedas comuns (base EUR) via Frankfurter. Guarda 6 horas."""
+    outras = ",".join(m for m in MOEDAS_FIAT if m != "EUR")
     for url in (f"https://api.frankfurter.dev/v1/latest?base=EUR&symbols={outras}",
                 f"https://api.frankfurter.app/latest?from=EUR&to={outras}"):
         try:
-            with urllib.request.urlopen(url, timeout=6) as r:
-                bruto = json.load(r)
+            bruto = _baixar_json(url)
             taxas = {"EUR": 1.0, **{k: float(v) for k, v in bruto["rates"].items()}}
-            if all(m in taxas for m in MOEDAS):
-                _cotacoes["dados"] = {"base": "EUR", "data": bruto.get("date"), "taxas": taxas}
-                _cotacoes["quando"] = time.time()
-                return _cotacoes["dados"]
+            if all(m in taxas for m in MOEDAS_FIAT):
+                _cotacoes["fiat"].update(quando=time.time(), taxas=taxas, data=bruto.get("date"))
+                return
         except Exception as erro:
             print("Falha ao buscar cotações:", erro)
-    if _cotacoes["dados"]:
-        return _cotacoes["dados"]
-    raise HTTPException(status_code=503, detail="Cotações indisponíveis agora. Tente de novo em instantes.")
+
+def _atualizar_cripto() -> None:
+    """Moedas digitais via CoinGecko: quantas unidades valem 1 EUR. Guarda 10 minutos."""
+    ids = ",".join(MOEDAS_CRIPTO.values())
+    try:
+        bruto = _baixar_json(f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=eur")
+        taxas = {}
+        for codigo, id_ in MOEDAS_CRIPTO.items():
+            preco = float(bruto[id_]["eur"])
+            if preco > 0:
+                taxas[codigo] = 1.0 / preco
+        if taxas:
+            _cotacoes["cripto"].update(quando=time.time(), taxas=taxas)
+    except Exception as erro:
+        print("Falha ao buscar cotações digitais:", erro)
+
+def buscar_cotacoes() -> dict:
+    """Taxas (unidades de cada moeda por 1 EUR). Se uma fonte falhar, usa a última guardada;
+    moedas sem nenhuma cotação ficam de fora (o site avisa)."""
+    agora = time.time()
+    if not _cotacoes["fiat"]["taxas"] or agora - _cotacoes["fiat"]["quando"] > 6 * 3600:
+        _atualizar_fiat()
+    if not _cotacoes["cripto"]["taxas"] or agora - _cotacoes["cripto"]["quando"] > 600:
+        _atualizar_cripto()
+    fiat = _cotacoes["fiat"]
+    if not fiat["taxas"]:
+        raise HTTPException(status_code=503, detail="Cotações indisponíveis agora. Tente de novo em instantes.")
+    taxas = dict(fiat["taxas"])
+    taxas.update(_cotacoes["cripto"]["taxas"] or {})
+    return {"base": "EUR", "data": fiat["data"], "taxas": taxas}
 
 def moeda_valida(moeda: str | None, padrao: str) -> str:
     moeda = (moeda or padrao or "EUR").strip().upper()
@@ -279,11 +313,15 @@ def meus_dados(usuario: Usuario = Depends(usuario_logado)):
         "lixeira_dias": usuario.lixeira_dias,
         "moeda": usuario.moeda or "EUR",
         "moedas": list(MOEDAS),
+        "moedas_padrao": list(MOEDAS_FIAT),
+        "categorias": CATEGORIAS,
     }
 
 @app.put("/me/moeda")
 def configurar_moeda(c: MoedaConfig, usuario: Usuario = Depends(usuario_logado)):
     moeda = moeda_valida(c.moeda, "EUR")
+    if moeda not in MOEDAS_FIAT:
+        raise HTTPException(status_code=400, detail="Escolha uma moeda comum como padrão")
     repo.definir_moeda(usuario.id, moeda)
     return {"ok": True, "moeda": moeda}
 
@@ -362,7 +400,7 @@ def excluir_conta(c: ExcluirConta, usuario: Usuario = Depends(usuario_logado)):
 def criar_despesa(entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
     validar_despesa(entrada)
     data_hora = data_hora_da_entrada(entrada.data)
-    categoria = ia.classificar(entrada.texto)
+    categoria = categoria_valida(entrada.categoria) or ia.classificar(entrada.texto)
     moeda = moeda_valida(entrada.moeda, usuario.moeda)
     repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
                         categoria=categoria, moeda=moeda, data_hora=data_hora))
@@ -379,7 +417,11 @@ def editar_despesa(despesa_id: int, entrada: DespesaEntrada, usuario: Usuario = 
     if not atual:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     # só pede nova categoria à IA se a descrição mudou
-    categoria = atual.categoria if entrada.texto == atual.descricao else ia.classificar(entrada.texto)
+    escolhida = categoria_valida(entrada.categoria)
+    if escolhida:
+        categoria = escolhida  # o usuário escolheu a categoria
+    else:
+        categoria = atual.categoria if entrada.texto == atual.descricao else ia.classificar(entrada.texto)
     nova_data = data_hora_da_entrada(entrada.data) if entrada.data else None
     moeda = moeda_valida(entrada.moeda, atual.moeda)
     repo.atualizar_despesa(despesa_id, usuario.id, entrada.texto, entrada.valor, categoria, nova_data, moeda)

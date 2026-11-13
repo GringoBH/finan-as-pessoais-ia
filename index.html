@@ -282,6 +282,14 @@
   [data-tema="escuro"] .aviso.ok { background: #0f766e; }
   [data-tema="escuro"] dialog { border: 1px solid var(--linha); }
 
+  /* ---------- Mostrar senha ---------- */
+  .senha-wrap { position: relative; display: block; }
+  .senha-wrap input { padding-right: 46px; }
+  .senha-wrap .olho { position: absolute; top: 0; right: 0; height: 100%; width: 46px; display: grid; place-items: center;
+    background: none; border: 0; color: var(--suave); border-radius: 0 8px 8px 0; }
+  .senha-wrap .olho:hover { color: var(--tinta); }
+  .senha-wrap .olho svg { width: 22px; height: 22px; }
+
   /* ---------- Moedas ---------- */
   .moeda-grupo { display: flex; gap: 6px; }
   .moeda-grupo input { flex: 1; min-width: 0; }
@@ -366,6 +374,9 @@
     .col-data .d1 { font-size: .9rem; }
     .ico svg { width: 18px; height: 18px; }
     .ico { padding: 3px; }
+    td.ac { width: 64px; padding: 2px; }
+    td.v, th.v { font-size: .92rem; }
+    .col-desc { word-break: break-word; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -447,7 +458,7 @@
 
     <form id="form" class="folha novo" autocomplete="off">
       <label class="campo c-desc">Descrição<input id="texto" required maxlength="120" placeholder="ex: café, metro, supermercado"></label>
-      <label class="campo c-valor">Valor<span class="moeda-grupo"><input id="valor" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00"><select id="moeda" aria-label="Moeda"></select></span></label>
+      <label class="campo c-valor">Valor<span class="moeda-grupo"><input id="valor" type="number" step="any" min="0.00000001" inputmode="decimal" required placeholder="0,00"><select id="moeda" aria-label="Moeda"></select></span></label>
       <label class="campo c-data">Data<input id="data" type="date" required></label>
       <button id="btnAdicionar" class="btn-primario">Adicionar gasto</button>
     </form>
@@ -645,7 +656,8 @@
   <form id="formEditar" autocomplete="off">
     <h3>Editar gasto</h3>
     <label class="campo">Descrição<input id="edTexto" required maxlength="120"></label>
-    <label class="campo">Valor<span class="moeda-grupo"><input id="edValor" type="number" step="0.01" min="0.01" inputmode="decimal" required><select id="edMoeda" aria-label="Moeda"></select></span></label>
+    <label class="campo">Valor<span class="moeda-grupo"><input id="edValor" type="number" step="any" min="0.00000001" inputmode="decimal" required><select id="edMoeda" aria-label="Moeda"></select></span></label>
+    <label class="campo">Categoria<select id="edCategoria"></select></label>
     <label class="campo">Data<input id="edData" type="date" required></label>
     <div class="acoes">
       <button type="button" class="btn-sec" id="edCancelar">Cancelar</button>
@@ -735,9 +747,15 @@
 const API_URL = "https://finan-as-pessoais-ia.onrender.com";
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
-const NOMES_MOEDA = { EUR: "€ EUR", BRL: "R$ BRL", USD: "US$ USD", GBP: "£ GBP" };
+const NOMES_MOEDA = { EUR: "€ EUR", BRL: "R$ BRL", USD: "US$ USD", GBP: "£ GBP",
+  BTC: "₿ BTC", ETH: "Ξ ETH", USDT: "₮ USDT", SOL: "SOL", XRP: "XRP", BNB: "BNB" };
+const CRIPTO = ["BTC", "ETH", "USDT", "SOL", "XRP", "BNB"];
 const _fmts = {};
 function fmtMoeda(v, moeda) {
+  if (CRIPTO.includes(moeda)) {  // moedas digitais: até 8 casas, sem arredondar para 2
+    const f = _fmts[moeda] || (_fmts[moeda] = new Intl.NumberFormat("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 8 }));
+    return `${f.format(v)} ${moeda}`;
+  }
   const f = _fmts[moeda] || (_fmts[moeda] = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moeda }));
   return f.format(v);
 }
@@ -779,23 +797,27 @@ function diaMesUTC(d) {
 
 function converter(valor, de) {
   const t = estado.taxas;
-  if (de === estado.moeda || !t[de] || !t[estado.moeda]) return valor;
+  if (de === estado.moeda) return valor;
+  if (!estado.taxasOk) return valor;                 // cotações ainda a carregar
+  if (!t[de] || !t[estado.moeda]) return null;       // sem cotação para esta moeda
   return valor / t[de] * t[estado.moeda];
 }
 
 function normalizar(d) {
   const moeda = d.moeda || "EUR";
   const valorOrig = d.valor;
-  d = { ...d, valor: converter(d.valor, moeda) };  // daqui em diante, valor = na moeda padrão
+  const conv = converter(d.valor, moeda);
+  const semTaxa = conv === null;                    // sem cotação: não entra nos totais
+  d = { ...d, valor: semTaxa ? 0 : conv };          // daqui em diante, valor = na moeda padrão
   const dt = new Date(d.data_hora.replace(/(\.\d{3})\d+/, "$1") + "Z");
   const sem = infoSemana(dt);
   const meioDia = dt.getUTCHours() === 12 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0;
   return {
-    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor, valorOrig, moeda,
+    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor, valorOrig, moeda, semTaxa,
     dt, ts: dt.getTime(), semHora: meioDia,
     dia: chaveDia(dt), mes: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`, ano: String(dt.getFullYear()),
     semana: `${sem.ano}-S${pad(sem.numero)}`, sem,
-    busca: semAcento(`${d.descricao} ${d.categoria} ${valorOrig.toFixed(2)} ${valorOrig.toFixed(2).replace(".", ",")} ${d.valor.toFixed(2)} ${d.valor.toFixed(2).replace(".", ",")} ${moeda}`),
+    busca: semAcento(`${d.descricao} ${d.categoria} ${valorOrig} ${valorOrig.toFixed(2)} ${valorOrig.toFixed(2).replace(".", ",")} ${d.valor.toFixed(2)} ${d.valor.toFixed(2).replace(".", ",")} ${moeda}`),
   };
 }
 const diaSemanaCurto = (dt) => ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][dt.getDay()];
@@ -805,6 +827,27 @@ function fmtData(dt) {
   return f === "mdy" ? `${m}/${d}/${a}` : f === "ymd" ? `${a}-${m}-${d}` : `${d}/${m}/${a}`;
 }
 const fmtHora = (dt) => `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+
+/* ============ Mostrar/ocultar senha ============ */
+const OLHO_ABERTO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+const OLHO_RISCADO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 19C5.6 19 2 12 2 12a18.5 18.5 0 0 1 5.1-5.9M9.9 5.2A9.8 9.8 0 0 1 12 5c6.4 0 10 7 10 7a18.6 18.6 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M2 2l20 20"/></svg>';
+document.querySelectorAll('input[type="password"]').forEach((campo) => {
+  const caixa = document.createElement("span");
+  caixa.className = "senha-wrap";
+  campo.parentNode.insertBefore(caixa, campo);
+  caixa.appendChild(campo);
+  const botao = document.createElement("button");
+  botao.type = "button"; botao.className = "olho"; botao.setAttribute("aria-label", "Mostrar senha");
+  botao.innerHTML = OLHO_ABERTO;
+  botao.addEventListener("click", () => {
+    const mostrar = campo.type === "password";
+    campo.type = mostrar ? "text" : "password";
+    botao.innerHTML = mostrar ? OLHO_RISCADO : OLHO_ABERTO;
+    botao.setAttribute("aria-label", mostrar ? "Ocultar senha" : "Mostrar senha");
+    campo.focus();
+  });
+  caixa.appendChild(botao);
+});
 
 /* ============ Avisos ============ */
 let tAviso;
@@ -1038,7 +1081,7 @@ function desenharTabela() {
         <td class="col-data"><span class="d1">${fmtData(d.dt)}</span><span class="d2">${diaSemanaCurto(d.dt)} · sem ${d.sem.numero}${hora}</span></td>
         <td class="col-desc">${esc(d.descricao)}<br><span class="tag tag-sm">${esc(d.categoria)}</span></td>
         <td class="col-cat"><span class="tag">${esc(d.categoria)}</span></td>
-        <td class="v">${eur.format(d.valor)}${d.moeda !== estado.moeda ? `<span class="orig">${fmtMoeda(d.valorOrig, d.moeda)}</span>` : ""}</td>
+        <td class="v">${d.semTaxa ? "—" : eur.format(d.valor)}${d.moeda !== estado.moeda ? `<span class="orig">${fmtMoeda(d.valorOrig, d.moeda)}${d.semTaxa ? " · sem cotação" : ""}</span>` : ""}</td>
         <td class="ac">
           <button class="ico" type="button" data-acao="editar" data-id="${d.id}" aria-label="Editar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
           <button class="ico apagar" type="button" data-acao="apagar" data-id="${d.id}" aria-label="Apagar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>
@@ -1196,6 +1239,10 @@ $("corpo").addEventListener("click", (ev) => {
     $("edTexto").value = alvo.descricao;
     $("edValor").value = alvo.valorOrig;
     $("edMoeda").value = alvo.moeda;
+    const cats = [...(estado.eu && estado.eu.categorias || [])];
+    if (!cats.includes(alvo.categoria)) cats.unshift(alvo.categoria);  // categorias antigas continuam aparecendo
+    $("edCategoria").innerHTML = cats.map((c) => `<option>${esc(c)}</option>`).join("");
+    $("edCategoria").value = alvo.categoria;
     $("edData").value = alvo.dia;
     $("dlgEditar").showModal();
   } else {
@@ -1210,7 +1257,7 @@ $("formEditar").addEventListener("submit", async (ev) => {
   const texto = $("edTexto").value.trim();
   const valor = parseFloat($("edValor").value);
   if (!texto || isNaN(valor) || valor <= 0) { avisar("Confira a descrição e o valor.", "erro"); return; }
-  const corpo = { texto, valor, moeda: $("edMoeda").value };
+  const corpo = { texto, valor, moeda: $("edMoeda").value, categoria: $("edCategoria").value };
   if ($("edData").value && $("edData").value !== alvo.dia) corpo.data = $("edData").value;
   $("edSalvar").disabled = true;
   try {
@@ -1359,15 +1406,16 @@ async function carregarEu() {
 }
 
 function preencherMoedas() {
-  const opcoes = estado.moedas.map((m) => `<option value="${m}">${NOMES_MOEDA[m] || m}</option>`).join("");
-  ["moeda", "edMoeda", "ctMoeda"].forEach((id) => { $(id).innerHTML = opcoes; });
+  const lista = (ms) => ms.map((m) => `<option value="${m}">${NOMES_MOEDA[m] || m}</option>`).join("");
+  ["moeda", "edMoeda"].forEach((id) => { $(id).innerHTML = lista(estado.moedas); });
+  $("ctMoeda").innerHTML = lista(estado.eu && estado.eu.moedas_padrao || ["EUR", "BRL", "USD", "GBP"]);
   $("moeda").value = estado.moeda;
 }
 
 async function carregarCotacoes() {
   try {
     const c = await chamar("/cotacoes");
-    estado.taxas = c.taxas; estado.dataCotacao = c.data;
+    estado.taxas = c.taxas; estado.dataCotacao = c.data; estado.taxasOk = true;
   } catch (e) {
     avisar("Sem cotações agora: gastos em outras moedas aparecem sem conversão.", "erro");
   }
@@ -1380,6 +1428,8 @@ function reaplicarMoeda() {
   $("ctMoeda").value = estado.moeda;
   estado.pagina = 1;
   desenhar(); desenharLixeira();
+  const faltam = [...new Set(estado.despesas.filter((d) => d.semTaxa).map((d) => d.moeda))];
+  if (faltam.length) avisar(`Sem cotação agora para ${faltam.join(", ")}: esses gastos ficam fora dos totais.`, "erro");
 }
 
 /* ----- tema ----- */
