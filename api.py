@@ -26,6 +26,9 @@ ia = ClassificadorIA()
 # A conta com este usuário vira admin. Defina ADMIN_LOGIN nas variáveis de ambiente do Render.
 ADMIN_LOGIN = (os.getenv("ADMIN_LOGIN") or "").strip().lower()
 PRAZOS_LIXEIRA = (1, 7, 30)  # dias; 1 = 24 horas
+# FASE DE TESTES: permite redefinir a senha só com o usuário, sem email nem código.
+# Antes de abrir o site para clientes reais, troque para False.
+RECUPERACAO_SEM_VERIFICACAO = True
 PREFERENCIAS_PADRAO = {"tema": "auto", "por_pagina": 25, "aba_inicial": "registros",
                        "formato_data": "dmy", "semana_inicio": "seg"}
 PREFERENCIAS_VALIDAS = {"tema": ("auto", "claro", "escuro"), "por_pagina": (10, 25, 50, 100),
@@ -76,6 +79,10 @@ class PreferenciasEntrada(BaseModel):
     aba_inicial: str | None = None
     formato_data: str | None = None
     semana_inicio: str | None = None
+
+class RecuperarSenha(BaseModel):
+    login: str
+    nova: str
 
 class ExcluirConta(BaseModel):
     senha: str
@@ -244,6 +251,21 @@ def preferencias_do_usuario(usuario: Usuario) -> dict:
     except (ValueError, TypeError):
         pass
     return prefs
+
+@app.post("/recuperar-senha")
+def recuperar_senha(r: RecuperarSenha):
+    """Esqueci a senha (modo de testes): define uma senha nova só com o usuário."""
+    if not RECUPERACAO_SEM_VERIFICACAO:
+        raise HTTPException(status_code=403, detail="Recuperação de senha indisponível")
+    usuario = repo.usuario_por_login(r.login.strip().lower())
+    if not usuario:
+        raise HTTPException(status_code=400, detail="Usuário não encontrado")
+    if usuario.is_admin or (ADMIN_LOGIN and usuario.login == ADMIN_LOGIN):
+        raise HTTPException(status_code=403, detail="Conta de administrador: não dá para recuperar por aqui")
+    if len(r.nova) < 6:
+        raise HTTPException(status_code=400, detail="Senha nova: mínimo 6 caracteres")
+    repo.definir_senha(usuario.id, gerar_hash(r.nova), secrets.token_hex(32))  # encerra as sessões antigas
+    return {"ok": True}
 
 @app.get("/me")
 def meus_dados(usuario: Usuario = Depends(usuario_logado)):

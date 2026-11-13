@@ -416,8 +416,18 @@
     <label class="campo">Usuário<input id="loginUser" autocomplete="username" autocapitalize="none"></label>
     <label class="campo">Senha<input id="loginSenha" type="password" autocomplete="current-password"></label>
     <button id="btnEntrar" class="btn-primario" type="button">Entrar</button>
-    <p class="troca">Não tem conta? <a class="link" id="irCadastro">Criar conta</a></p>
+    <p class="troca">Não tem conta? <a class="link" id="irCadastro">Criar conta</a> · <a class="link" id="irRecuperar">Esqueci a senha</a></p>
     <p id="erroLogin" class="erro"></p>
+  </section>
+
+  <section id="telaRecuperar" class="folha auth" hidden>
+    <h2>Esqueci a senha</h2>
+    <label class="campo">Usuário<input id="recUser" autocomplete="username" autocapitalize="none"></label>
+    <label class="campo">Senha nova<input id="recSenha" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
+    <label class="campo">Repetir senha nova<input id="recSenha2" type="password" autocomplete="new-password"></label>
+    <button id="btnRecuperar" class="btn-primario" type="button">Definir senha nova</button>
+    <p class="troca"><a class="link" id="irLoginRec">Voltar para Entrar</a></p>
+    <p id="erroRecuperar" class="erro"></p>
   </section>
 
   <!-- Criar conta -->
@@ -835,6 +845,7 @@ async function chamar(caminho, opcoes = {}) {
 function mostrarTela(nome) {
   $("telaLogin").hidden = nome !== "login";
   $("telaCadastro").hidden = nome !== "cadastro";
+  $("telaRecuperar").hidden = nome !== "recuperar";
   $("telaApp").hidden = nome !== "app";
   const logado = nome === "app";
   $("btnMenu").hidden = !logado;
@@ -846,6 +857,7 @@ function mostrarTela(nome) {
   if (!logado) calcFechar();
   $("erroLogin").textContent = "";
   $("erroCadastro").textContent = "";
+  $("erroRecuperar").textContent = "";
 }
 
 function iniciar() {
@@ -896,6 +908,27 @@ $("btnCadastrar").addEventListener("click", () => {
 });
 $("irCadastro").addEventListener("click", () => mostrarTela("cadastro"));
 $("irLogin").addEventListener("click", () => mostrarTela("login"));
+$("irRecuperar").addEventListener("click", () => { mostrarTela("recuperar"); $("recUser").value = $("loginUser").value; });
+$("irLoginRec").addEventListener("click", () => mostrarTela("login"));
+$("btnRecuperar").addEventListener("click", async () => {
+  const erro = $("erroRecuperar");
+  if ($("recSenha").value !== $("recSenha2").value) { erro.textContent = "As senhas novas não coincidem."; return; }
+  erro.textContent = "A processar… se demorar, o servidor está a acordar (até 1 minuto).";
+  $("btnRecuperar").disabled = true;
+  try {
+    await chamar("/recuperar-senha", { method: "POST", body: JSON.stringify({ login: $("recUser").value, nova: $("recSenha").value }) });
+    $("loginUser").value = $("recUser").value;
+    $("recSenha").value = $("recSenha2").value = "";
+    mostrarTela("login");
+    $("loginSenha").value = "";
+    $("erroLogin").textContent = "";
+    avisar("Senha alterada. Entre com a senha nova.");
+  } catch (e) {
+    erro.textContent = e.message;
+  } finally {
+    $("btnRecuperar").disabled = false;
+  }
+});
 $("btnSair").addEventListener("click", sair);
 
 /* ============ Carregar dados ============ */
