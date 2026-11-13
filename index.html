@@ -219,6 +219,51 @@
   .calc-teclas .t-zero { grid-column: span 2; }
   .calc-usar { width: 100%; margin-top: 10px; background: var(--menta); color: var(--fundo); border: 0; border-radius: 10px; padding: 11px; font-weight: 700; }
 
+  /* ---------- Conta, lixeira e painel ---------- */
+  .topo-acoes { display: flex; gap: 8px; }
+  .abas button { white-space: nowrap; }
+  .abas button .contagem { display: inline-block; vertical-align: middle; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--goteira); color: var(--suave); font-size: .8rem; }
+  .nota { color: var(--suave); font-size: .9rem; }
+  .barra-lixeira { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; padding: 12px 14px; margin-bottom: 12px; }
+  .item-lixo { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; padding: 12px 14px; border-top: 1px solid var(--linha); align-items: center; }
+  .item-lixo:first-child { border-top: 0; }
+  .item-lixo .desc { font-weight: 600; }
+  .item-lixo .meta { color: var(--suave); font-size: .85rem; }
+  .item-lixo .valor { font-weight: 700; text-align: right; }
+  .item-lixo .acoes-item { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .item-lixo .vence { color: var(--perigo); font-size: .85rem; font-weight: 600; margin-right: auto; }
+  .btn-mini { padding: 7px 12px; border-radius: 8px; border: 1px solid var(--linha); background: #fff; font-size: .9rem; }
+  .btn-mini:hover { background: var(--goteira); }
+  .btn-mini:disabled { opacity: .45; cursor: default; }
+  .btn-mini.perigo, .perigo-texto { color: var(--perigo); border-color: #f0c4bf; }
+  hr.sep { border: 0; border-top: 1px solid var(--linha); margin: 16px 0; }
+  .aviso button { margin-left: 12px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.6); color: #fff; border-radius: 6px; padding: 3px 10px; font-weight: 700; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--linha); border: 1px solid var(--linha); border-radius: var(--raio); overflow: hidden; margin-bottom: 16px; }
+  .stats > div { background: var(--folha); padding: 12px 14px; }
+  .stats .rot { display: block; font-size: .85rem; color: var(--suave); }
+  .stats strong { font-size: 1.5rem; }
+  .stats .online strong { color: var(--verde); }
+  .grafico { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin: 8px 0 4px; }
+  .grafico .col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+  .grafico .col i { display: block; width: 100%; background: var(--verde); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .grafico .col span { font-size: .7rem; color: var(--suave); margin-top: 4px; }
+  .grafico .col b { font-size: .75rem; min-height: 1em; }
+  .ponto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #c3cfca; margin-right: 6px; }
+  .ponto.on { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.25); }
+  .tab-simples th, .tab-simples td { white-space: nowrap; }
+  .tab-simples td.quebra { white-space: normal; overflow-wrap: anywhere; }
+  .log-lista { font-size: .9rem; color: var(--suave); list-style: none; margin: 0; padding: 0; }
+  .log-lista li { padding: 6px 0; border-top: 1px solid var(--linha); }
+  .log-lista li:first-child { border-top: 0; }
+  @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px) {
+    .abas { gap: 0; }
+    .abas button { padding-left: 8px; padding-right: 8px; flex: 1; }
+    .tab-simples .oc-mob { display: none; }
+    .tab-simples th, .tab-simples td { padding-left: 8px; padding-right: 8px; }
+    .tab-simples .btn-mini { padding: 6px 8px; }
+  }
+
   /* ---------- Telemóvel ---------- */
   @media (max-width: 760px) {
     .faixa { grid-template-columns: repeat(2, 1fr); }
@@ -262,7 +307,10 @@
         <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#d97706"/><circle cx="16" cy="16" r="12.5" fill="#fbbf24"/><text x="16" y="22" text-anchor="middle" font-size="17" font-weight="700" fill="#78350f" font-family="Arial, sans-serif">€</text></svg>
         <span>Minhas Finanças</span>
       </div>
-      <button id="btnSair" class="btn-topo" type="button" hidden>Sair</button>
+      <div class="topo-acoes">
+        <button id="btnConta" class="btn-topo" type="button" hidden>Conta</button>
+        <button id="btnSair" class="btn-topo" type="button" hidden>Sair</button>
+      </div>
     </div>
     <div id="faixa" class="faixa" hidden>
       <div><span class="rot">Hoje</span><strong id="fDia">—</strong><span class="sub" id="fDiaN"></span></div>
@@ -312,6 +360,8 @@
     <nav class="abas" role="tablist" aria-label="Secções">
       <button type="button" role="tab" data-aba="registros" aria-selected="true">Registros</button>
       <button type="button" role="tab" data-aba="resumo" aria-selected="false">Resumo</button>
+      <button type="button" role="tab" data-aba="lixeira" aria-selected="false">Lixeira<span class="contagem" id="contLixeira" hidden></span></button>
+      <button type="button" role="tab" data-aba="painel" id="tabPainel" aria-selected="false" hidden>Painel</button>
     </nav>
 
     <!-- Registros -->
@@ -382,6 +432,43 @@
         <div id="listaCategorias"></div>
       </div>
     </section>
+
+    <!-- Lixeira -->
+    <section id="abaLixeira" hidden>
+      <div class="folha barra-lixeira">
+        <span class="nota" id="notaLixeira"></span>
+        <span>
+          <button type="button" class="btn-mini" id="btnAjustarPrazo">Mudar prazo</button>
+          <button type="button" class="btn-mini perigo" id="btnEsvaziar">Esvaziar lixeira</button>
+        </span>
+      </div>
+      <div class="folha" id="listaLixeira"></div>
+    </section>
+
+    <!-- Painel (só para admin) -->
+    <section id="abaPainel" hidden>
+      <div class="stats" id="painelStats"></div>
+      <div class="folha bloco">
+        <div class="bloco-topo"><h2>Novas contas nos últimos 14 dias</h2></div>
+        <div class="grafico" id="painelGrafico"></div>
+      </div>
+      <div class="folha bloco">
+        <div class="bloco-topo"><h2>Usuários</h2><span class="nota" id="painelAtualizado"></span></div>
+        <div class="folha-tabela" style="border-radius: var(--raio)">
+          <table class="tab-simples">
+            <thead><tr>
+              <th><span>Usuário</span></th><th><span>Acesso</span></th><th class="oc-mob"><span>Criada em</span></th>
+              <th class="v oc-mob"><span>Gastos</span></th><th class="v oc-mob"><span>Lixeira</span></th><th><span></span></th>
+            </tr></thead>
+            <tbody id="painelUsuarios"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="folha bloco">
+        <div class="bloco-topo"><h2>Consultas de registros</h2></div>
+        <ul class="log-lista" id="painelLog"></ul>
+      </div>
+    </section>
   </div>
 </main>
 
@@ -399,14 +486,60 @@
   </form>
 </dialog>
 
-<!-- Apagar gasto -->
-<dialog id="dlgApagar">
-  <h3>Apagar este gasto?</h3>
-  <p id="apTexto"></p>
+<!-- Confirmação genérica -->
+<dialog id="dlgConfirmar">
+  <h3 id="cfTitulo"></h3>
+  <p id="cfTexto"></p>
   <div class="acoes">
-    <button type="button" class="btn-sec" id="apCancelar">Cancelar</button>
-    <button type="button" class="btn-perigo" id="apConfirmar">Apagar</button>
+    <button type="button" class="btn-sec" id="cfCancelar">Cancelar</button>
+    <button type="button" id="cfOk" class="btn-perigo">Confirmar</button>
   </div>
+</dialog>
+
+<!-- Minha conta -->
+<dialog id="dlgConta">
+  <h3>Minha conta</h3>
+  <p id="ctInfo"></p>
+  <hr class="sep">
+  <label class="campo">Lixeira: apagar de vez depois de
+    <select id="ctLixeira">
+      <option value="1">24 horas</option>
+      <option value="7">7 dias</option>
+      <option value="30">30 dias</option>
+    </select>
+    <small>Os gastos que você apagar ficam na lixeira por esse tempo e podem ser restaurados. Depois são removidos de vez. A mudança vale para os próximos gastos apagados.</small>
+  </label>
+  <p id="ctMsg" class="nota" aria-live="polite"></p>
+  <hr class="sep">
+  <button type="button" class="btn-sec perigo-texto" id="ctExcluir">Excluir minha conta</button>
+  <div class="acoes"><button type="button" class="btn-primario" id="ctFechar">Fechar</button></div>
+</dialog>
+
+<!-- Excluir conta -->
+<dialog id="dlgExcluir">
+  <form id="formExcluir">
+    <h3>Excluir minha conta?</h3>
+    <p>Todos os seus gastos, inclusive os da lixeira, serão apagados <strong>agora</strong> e não poderão ser recuperados. Digite a senha para confirmar.</p>
+    <label class="campo" style="margin-top:12px">Senha<input id="exSenha" type="password" autocomplete="current-password" required></label>
+    <p id="exErro" class="erro"></p>
+    <div class="acoes">
+      <button type="button" class="btn-sec" id="exCancelar">Cancelar</button>
+      <button class="btn-perigo" id="exOk">Excluir conta</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Registros de um usuário (admin, somente leitura) -->
+<dialog id="dlgUsuario" style="width: min(640px, calc(100% - 32px))">
+  <h3 id="usTitulo"></h3>
+  <p class="nota">Somente leitura. Esta consulta fica registrada.</p>
+  <div class="folha-tabela" style="max-height: 50vh; overflow: auto; margin-top: 10px; border-radius: var(--raio)">
+    <table class="tab-simples">
+      <thead><tr><th><span>Data</span></th><th><span>Descrição</span></th><th class="oc-mob"><span>Categoria</span></th><th class="v"><span>Valor</span></th></tr></thead>
+      <tbody id="usCorpo"></tbody>
+    </table>
+  </div>
+  <div class="acoes"><button type="button" class="btn-primario" id="usFechar">Fechar</button></div>
 </dialog>
 
 <!-- Calculadora -->
@@ -451,6 +584,7 @@ const estado = {
   busca: "", categoria: "", de: "", ate: "", min: "", max: "",
   ord: { campo: "data", dir: "desc" },
   pagina: 1, porPagina: 25, agrupar: "mes", aba: "registros",
+  eu: null, lixeira: [],
 };
 
 /* ============ Datas ============ */
@@ -484,10 +618,16 @@ const fmtHora = (dt) => `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 
 /* ============ Avisos ============ */
 let tAviso;
-function avisar(msg, tipo = "ok") {
+function avisar(msg, tipo = "ok", acao = null) {
   const a = $("aviso");
   a.textContent = msg; a.className = "aviso " + tipo; a.hidden = false;
-  clearTimeout(tAviso); tAviso = setTimeout(() => { a.hidden = true; }, 5000);
+  if (acao) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = acao.texto;
+    b.addEventListener("click", () => { a.hidden = true; acao.fazer(); });
+    a.appendChild(b);
+  }
+  clearTimeout(tAviso); tAviso = setTimeout(() => { a.hidden = true; }, acao ? 8000 : 5000);
 }
 
 /* ============ API ============ */
@@ -518,6 +658,7 @@ function mostrarTela(nome) {
   $("telaApp").hidden = nome !== "app";
   const logado = nome === "app";
   $("btnSair").hidden = !logado;
+  $("btnConta").hidden = !logado;
   $("faixa").hidden = !logado;
   $("btnCalc").hidden = !logado;
   if (!logado) calcFechar();
@@ -529,7 +670,10 @@ function iniciar() {
   if (localStorage.getItem("token")) {
     $("data").value = chaveDia(new Date());
     mostrarTela("app");
+    mudarAba("registros");
     carregarDespesas();
+    carregarEu();
+    carregarLixeira();
   } else {
     mostrarTela("login");
   }
@@ -538,6 +682,10 @@ function iniciar() {
 function sair() {
   localStorage.removeItem("token");
   estado.despesas = [];
+  estado.eu = null; estado.lixeira = [];
+  pararPainel();
+  $("tabPainel").hidden = true;
+  $("contLixeira").hidden = true;
   iniciar();
 }
 
@@ -750,8 +898,13 @@ function mudarAba(aba) {
   estado.aba = aba;
   $("abaRegistros").hidden = aba !== "registros";
   $("abaResumo").hidden = aba !== "resumo";
+  $("abaLixeira").hidden = aba !== "lixeira";
+  $("abaPainel").hidden = aba !== "painel";
+  $("form").hidden = aba === "lixeira" || aba === "painel";
   document.querySelectorAll("[data-aba]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.aba === aba)));
   desenharResumo();
+  if (aba === "lixeira") carregarLixeira();
+  if (aba === "painel") iniciarPainel(); else pararPainel();
 }
 document.querySelectorAll("[data-aba]").forEach((b) => b.addEventListener("click", () => mudarAba(b.dataset.aba)));
 document.querySelectorAll("[data-agrupar]").forEach((b) => b.addEventListener("click", () => { estado.agrupar = b.dataset.agrupar; desenharResumo(); }));
@@ -823,8 +976,7 @@ $("corpo").addEventListener("click", (ev) => {
     $("edData").value = alvo.dia;
     $("dlgEditar").showModal();
   } else {
-    $("apTexto").innerHTML = `<strong>${esc(alvo.descricao)}</strong> · ${eur.format(alvo.valor)} · ${fmtData(alvo.dt)}<br>Esta ação não pode ser desfeita.`;
-    $("dlgApagar").showModal();
+    moverParaLixeira(alvo);
   }
 });
 
@@ -850,21 +1002,247 @@ $("formEditar").addEventListener("submit", async (ev) => {
   }
 });
 
-$("apCancelar").addEventListener("click", () => $("dlgApagar").close());
-$("apConfirmar").addEventListener("click", async () => {
-  if (!alvo) return;
-  $("apConfirmar").disabled = true;
+/* ============ Confirmação genérica ============ */
+let aoConfirmar = null;
+function confirmar(titulo, texto, rotulo, fazer) {
+  $("cfTitulo").textContent = titulo;
+  $("cfTexto").textContent = texto;
+  $("cfOk").textContent = rotulo;
+  aoConfirmar = fazer;
+  $("dlgConfirmar").showModal();
+}
+$("cfCancelar").addEventListener("click", () => $("dlgConfirmar").close());
+$("cfOk").addEventListener("click", async () => {
+  $("dlgConfirmar").close();
+  const f = aoConfirmar; aoConfirmar = null;
+  if (f) await f();
+});
+
+/* ============ Lixeira ============ */
+const parseUTC = (s) => new Date(s.replace(/(\.\d{3})\d+/, "$1") + "Z");
+const textoPrazo = (dias) => dias === 1 ? "24 horas" : `${dias} dias`;
+
+function tempoRestante(expira) {
+  const ms = expira - Date.now();
+  if (ms <= 0) return "some agora";
+  const h = Math.ceil(ms / 3600000);
+  if (h < 24) return `some em ${h} h`;
+  const d = Math.ceil(h / 24);
+  return `some em ${d} ${d === 1 ? "dia" : "dias"}`;
+}
+
+async function moverParaLixeira(d) {
   try {
-    await chamar("/despesas/" + alvo.id, { method: "DELETE" });
-    $("dlgApagar").close();
-    await carregarDespesas();
-    avisar("Gasto apagado.");
+    await chamar("/despesas/" + d.id, { method: "DELETE" });
+    await Promise.all([carregarDespesas(), carregarLixeira()]);
+    avisar("Gasto movido para a lixeira.", "ok", { texto: "Desfazer", fazer: () => restaurar(d.id) });
   } catch (e) {
     avisar(e.message, "erro");
-  } finally {
-    $("apConfirmar").disabled = false;
+  }
+}
+
+async function restaurar(id) {
+  try {
+    await chamar(`/lixeira/${id}/restaurar`, { method: "POST" });
+    await Promise.all([carregarDespesas(), carregarLixeira()]);
+    avisar("Gasto restaurado.");
+  } catch (e) {
+    avisar(e.message, "erro");
+    carregarLixeira();
+  }
+}
+
+async function carregarLixeira() {
+  try {
+    const lista = await chamar("/lixeira");
+    estado.lixeira = lista.map((d) => ({ ...normalizar(d), expira: parseUTC(d.expira_em) }));
+  } catch (e) {
+    return;
+  }
+  desenharLixeira();
+}
+
+function desenharLixeira() {
+  const n = estado.lixeira.length;
+  const cont = $("contLixeira");
+  cont.hidden = n === 0; cont.textContent = n;
+  const dias = estado.eu ? estado.eu.lixeira_dias : 7;
+  $("notaLixeira").textContent = `Gastos apagados ficam aqui por ${textoPrazo(dias)} e depois são removidos de vez.`;
+  $("btnEsvaziar").disabled = n === 0;
+  $("listaLixeira").innerHTML = n === 0
+    ? `<p class="vazio">A lixeira está vazia. Quando você apagar um gasto, ele aparece aqui.</p>`
+    : estado.lixeira.map((d) => `
+      <div class="item-lixo">
+        <div><div class="desc">${esc(d.descricao)}</div>
+          <div class="meta">${esc(d.categoria)} · ${fmtData(d.dt)}</div></div>
+        <div class="valor">${eur.format(d.valor)}</div>
+        <div class="acoes-item">
+          <span class="vence">${tempoRestante(d.expira)}</span>
+          <button type="button" class="btn-mini" data-lx="restaurar" data-id="${d.id}">Restaurar</button>
+          <button type="button" class="btn-mini perigo" data-lx="apagar" data-id="${d.id}">Apagar de vez</button>
+        </div>
+      </div>`).join("");
+}
+
+$("listaLixeira").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-lx]");
+  if (!b) return;
+  const id = b.dataset.id;
+  if (b.dataset.lx === "restaurar") { restaurar(id); return; }
+  const d = estado.lixeira.find((x) => String(x.id) === id);
+  if (!d) return;
+  confirmar("Apagar de vez?", `“${d.descricao}” (${eur.format(d.valor)}) será removido agora e não poderá ser recuperado.`, "Apagar de vez", async () => {
+    try {
+      await chamar("/lixeira/" + id, { method: "DELETE" });
+      await carregarLixeira();
+      avisar("Gasto apagado de vez.");
+    } catch (e) { avisar(e.message, "erro"); carregarLixeira(); }
+  });
+});
+
+$("btnEsvaziar").addEventListener("click", () => {
+  const n = estado.lixeira.length;
+  if (!n) return;
+  confirmar("Esvaziar a lixeira?", `${plural(n)} será${n === 1 ? "" : "o"} removido${n === 1 ? "" : "s"} agora e não poderá${n === 1 ? "" : "o"} ser recuperado${n === 1 ? "" : "s"}.`, "Esvaziar", async () => {
+    try {
+      await chamar("/lixeira", { method: "DELETE" });
+      await carregarLixeira();
+      avisar("Lixeira esvaziada.");
+    } catch (e) { avisar(e.message, "erro"); }
+  });
+});
+
+/* ============ Minha conta ============ */
+async function carregarEu() {
+  try {
+    estado.eu = await chamar("/me");
+  } catch (e) { return; }
+  $("tabPainel").hidden = !estado.eu.is_admin;
+  desenharLixeira();
+}
+
+function abrirConta() {
+  const eu = estado.eu;
+  $("ctInfo").innerHTML = eu
+    ? `Usuário: <strong>${esc(eu.login)}</strong>${eu.email ? `<br>Email: ${esc(eu.email)}` : ""}`
+    : "";
+  $("ctLixeira").value = String(eu ? eu.lixeira_dias : 7);
+  $("ctMsg").textContent = "";
+  $("dlgConta").showModal();
+}
+$("btnConta").addEventListener("click", abrirConta);
+$("btnAjustarPrazo").addEventListener("click", abrirConta);
+$("ctFechar").addEventListener("click", () => $("dlgConta").close());
+$("ctLixeira").addEventListener("change", async (e) => {
+  const dias = parseInt(e.target.value, 10);
+  try {
+    await chamar("/me/lixeira", { method: "PUT", body: JSON.stringify({ dias }) });
+    if (estado.eu) estado.eu.lixeira_dias = dias;
+    $("ctMsg").textContent = `Salvo: a lixeira guarda por ${textoPrazo(dias)}.`;
+    desenharLixeira();
+  } catch (err) {
+    $("ctMsg").textContent = err.message;
   }
 });
+$("ctExcluir").addEventListener("click", () => {
+  $("dlgConta").close();
+  $("exSenha").value = ""; $("exErro").textContent = "";
+  $("dlgExcluir").showModal();
+});
+$("exCancelar").addEventListener("click", () => $("dlgExcluir").close());
+$("formExcluir").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("exOk").disabled = true;
+  try {
+    await chamar("/me/excluir", { method: "POST", body: JSON.stringify({ senha: $("exSenha").value }) });
+    $("dlgExcluir").close();
+    sair();
+    avisar("Conta excluída. Todos os dados foram apagados.");
+  } catch (e) {
+    $("exErro").textContent = e.message;
+  } finally {
+    $("exOk").disabled = false;
+  }
+});
+
+/* ============ Painel do admin ============ */
+let tPainel = null;
+const ABERTO_MIN = 5;
+
+function tempoRelativo(iso) {
+  if (!iso) return "nunca";
+  const s = Math.max(0, (Date.now() - parseUTC(iso)) / 1000);
+  if (s < 60) return "agora";
+  if (s < 3600) return `há ${Math.floor(s / 60)} min`;
+  if (s < 86400) return `há ${Math.floor(s / 3600)} h`;
+  const d = Math.floor(s / 86400);
+  return `há ${d} ${d === 1 ? "dia" : "dias"}`;
+}
+
+async function carregarPainel() {
+  try {
+    const [st, us, log] = await Promise.all([chamar("/admin/stats"), chamar("/admin/usuarios"), chamar("/admin/log")]);
+    desenharPainel(st, us, log);
+  } catch (e) {
+    avisar(e.message, "erro");
+  }
+}
+function iniciarPainel() {
+  pararPainel();
+  carregarPainel();
+  tPainel = setInterval(carregarPainel, 30000);
+}
+function pararPainel() { if (tPainel) { clearInterval(tPainel); tPainel = null; } }
+
+function desenharPainel(st, us, log) {
+  const caixa = (rot, val, cls = "") => `<div class="${cls}"><span class="rot">${rot}</span><strong>${val}</strong></div>`;
+  $("painelStats").innerHTML =
+    caixa("Contas", st.total_usuarios) +
+    caixa("Online agora", st.online_agora, "online") +
+    caixa("Ativos 24 h", st.ativos_24h) +
+    caixa("Ativos 7 dias", st.ativos_7d) +
+    caixa("Novas hoje", st.novos_hoje) +
+    caixa("Novas 7 dias", st.novos_7d) +
+    caixa("Novas 30 dias", st.novos_30d) +
+    caixa("Gastos / lixeira", `${st.gastos_ativos} / ${st.gastos_na_lixeira}`);
+  const max = Math.max(1, ...st.novos_por_dia.map((x) => x.n));
+  $("painelGrafico").innerHTML = st.novos_por_dia.map((x) => {
+    const [, m, d] = x.dia.split("-");
+    return `<div class="col" title="${d}/${m}: ${x.n}"><b>${x.n || ""}</b><i style="height:${Math.round((x.n / max) * 80)}%"></i><span>${d}</span></div>`;
+  }).join("");
+  $("painelUsuarios").innerHTML = us.map((u) => {
+    const on = u.ultimo_acesso && (Date.now() - parseUTC(u.ultimo_acesso)) < ABERTO_MIN * 60000;
+    const criada = u.criado_em ? fmtData(parseUTC(u.criado_em)) : "—";
+    return `<tr>
+      <td class="quebra"><span class="ponto${on ? " on" : ""}"></span>${esc(u.login)}${u.is_admin ? " (admin)" : ""}${u.email ? `<br><small class="nota">${esc(u.email)}</small>` : ""}</td>
+      <td>${on ? "online" : tempoRelativo(u.ultimo_acesso)}</td>
+      <td class="oc-mob">${criada}</td>
+      <td class="v oc-mob">${u.n_gastos}</td><td class="v oc-mob">${u.n_lixeira}</td>
+      <td><button type="button" class="btn-mini" data-usuario="${u.id}" data-login="${esc(u.login)}" title="Ver registros">Ver<span class="oc-mob"> registros</span></button></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" class="vazio">Sem contas.</td></tr>`;
+  $("painelLog").innerHTML = log.length
+    ? log.map((l) => `<li>${esc(l.admin)} ${esc(l.acao)} de <strong>${esc(l.alvo)}</strong> · ${fmtData(parseUTC(l.quando))} ${fmtHora(parseUTC(l.quando))}</li>`).join("")
+    : `<li>Nenhuma consulta feita até agora.</li>`;
+  const agora = new Date();
+  $("painelAtualizado").textContent = `Atualizado às ${fmtHora(agora)}`;
+}
+
+$("painelUsuarios").addEventListener("click", async (ev) => {
+  const b = ev.target.closest("[data-usuario]");
+  if (!b) return;
+  try {
+    const r = await chamar(`/admin/usuarios/${b.dataset.usuario}/despesas`);
+    $("usTitulo").textContent = `Registros de ${r.login} (${plural(r.despesas.length)})`;
+    const linhas = r.despesas.map(normalizar).sort((a, c) => c.ts - a.ts);
+    $("usCorpo").innerHTML = linhas.map((d) =>
+      `<tr><td>${fmtData(d.dt)}</td><td class="quebra">${esc(d.descricao)}</td><td class="oc-mob">${esc(d.categoria)}</td><td class="v">${eur.format(d.valor)}</td></tr>`
+    ).join("") || `<tr><td colspan="4" class="vazio">Sem gastos.</td></tr>`;
+    $("dlgUsuario").showModal();
+    carregarPainel(); // atualiza o registro de consultas
+  } catch (e) { avisar(e.message, "erro"); }
+});
+$("usFechar").addEventListener("click", () => $("dlgUsuario").close());
 
 /* ============ Calculadora ============ */
 const calc = { expr: "", fresh: false, erro: false, fita: [] };
