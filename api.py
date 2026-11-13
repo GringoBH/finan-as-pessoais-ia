@@ -421,6 +421,20 @@ def admin_ver_despesas(usuario_id: int, admin: Usuario = Depends(admin_logado)):
     repo.registrar_log_admin(admin.login, alvo.login, "abriu os registros")
     return {"login": alvo.login, "despesas": [despesa_para_dict(d) for d in repo.listar(alvo.id)]}
 
+@app.post("/admin/usuarios/{usuario_id}/senha")
+def admin_nova_senha(usuario_id: int, admin: Usuario = Depends(admin_logado)):
+    """Gera uma senha temporária para quem esqueceu a dela. A pessoa troca depois em Perfil."""
+    alvo = repo.usuario_por_id(usuario_id)
+    if not alvo:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+    if alvo.id == admin.id:
+        raise HTTPException(status_code=400, detail="Para a sua própria senha, use Perfil")
+    temporaria = secrets.token_urlsafe(6)
+    repo.definir_senha(alvo.id, gerar_hash(temporaria), secrets.token_hex(32))  # encerra as sessões dela
+    repo.registrar_log_admin(admin.login, alvo.login, "gerou nova senha")
+    return {"login": alvo.login, "senha_temporaria": temporaria}
+
+
 @app.get("/admin/log")
 def admin_log(admin: Usuario = Depends(admin_logado)):
     return [{**l, "quando": iso(l["quando"])} for l in repo.listar_log_admin(20)]

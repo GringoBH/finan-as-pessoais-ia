@@ -670,6 +670,18 @@
   </form>
 </dialog>
 
+<!-- Senha temporária (admin) -->
+<dialog id="dlgSenhaTemp">
+  <h3>Senha temporária</h3>
+  <p id="stTexto"></p>
+  <p style="margin-top:12px"><strong id="stSenha" style="font-size:1.4rem; user-select: all; letter-spacing: .5px"></strong></p>
+  <p class="nota" style="margin-top:10px">Ela só aparece agora. Envie para a pessoa e peça para trocar em Perfil → Alterar senha.</p>
+  <div class="acoes">
+    <button type="button" class="btn-sec" id="stCopiar">Copiar</button>
+    <button type="button" class="btn-primario" id="stFechar">Fechar</button>
+  </div>
+</dialog>
+
 <!-- Registros de um usuário (admin, somente leitura) -->
 <dialog id="dlgUsuario" style="width: min(640px, calc(100% - 32px))">
   <h3 id="usTitulo"></h3>
@@ -1561,7 +1573,8 @@ function desenharPainel(st, us, log) {
       <td>${on ? "online" : tempoRelativo(u.ultimo_acesso)}</td>
       <td class="oc-mob">${criada}</td>
       <td class="v oc-mob">${u.n_gastos}</td><td class="v oc-mob">${u.n_lixeira}</td>
-      <td><button type="button" class="btn-mini" data-usuario="${u.id}" data-login="${esc(u.login)}" title="Ver registros">Ver<span class="oc-mob"> registros</span></button></td>
+      <td><button type="button" class="btn-mini" data-usuario="${u.id}" data-login="${esc(u.login)}" title="Ver registros">Ver<span class="oc-mob"> registros</span></button>
+        ${u.is_admin ? "" : `<button type="button" class="btn-mini" data-senha="${u.id}" data-login="${esc(u.login)}" title="Gerar senha temporária">Senha</button>`}</td>
     </tr>`;
   }).join("") || `<tr><td colspan="6" class="vazio">Sem contas.</td></tr>`;
   $("painelLog").innerHTML = log.length
@@ -1586,6 +1599,25 @@ $("painelUsuarios").addEventListener("click", async (ev) => {
   } catch (e) { avisar(e.message, "erro"); }
 });
 $("usFechar").addEventListener("click", () => $("dlgUsuario").close());
+
+$("painelUsuarios").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-senha]");
+  if (!b) return;
+  confirmar("Gerar nova senha?", `A senha atual de “${b.dataset.login}” deixa de valer e a pessoa sai de todos os aparelhos. Esta ação fica registrada.`, "Gerar senha", async () => {
+    try {
+      const r = await chamar(`/admin/usuarios/${b.dataset.senha}/senha`, { method: "POST" });
+      $("stTexto").textContent = `Nova senha de ${r.login}:`;
+      $("stSenha").textContent = r.senha_temporaria;
+      $("dlgSenhaTemp").showModal();
+      carregarPainel();
+    } catch (e) { avisar(e.message, "erro"); }
+  });
+});
+$("stFechar").addEventListener("click", () => { $("stSenha").textContent = ""; $("dlgSenhaTemp").close(); });
+$("stCopiar").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("stSenha").textContent); avisar("Senha copiada."); }
+  catch (e) { avisar("Não deu para copiar. Toque e segure na senha para copiar.", "erro"); }
+});
 
 /* ============ Calculadora ============ */
 const calc = { expr: "", fresh: false, erro: false, fita: [] };
