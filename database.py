@@ -43,6 +43,33 @@ class RepositorioDespesas:
         with self.Session() as session:
             return session.query(Despesa).filter_by(usuario_id=usuario_id).all()
 
+    def buscar_despesa(self, despesa_id: int, usuario_id: int):
+        with self.Session() as session:
+            return session.query(Despesa).filter_by(id=despesa_id, usuario_id=usuario_id).first()
+
+    def apagar_despesa(self, despesa_id: int, usuario_id: int) -> bool:
+        with self.Session() as session:
+            despesa = session.query(Despesa).filter_by(id=despesa_id, usuario_id=usuario_id).first()
+            if not despesa:
+                return False
+            session.delete(despesa)
+            session.commit()
+            return True
+
+    def atualizar_despesa(self, despesa_id: int, usuario_id: int, descricao: str,
+                          valor: float, categoria: str, data_hora=None) -> bool:
+        with self.Session() as session:
+            despesa = session.query(Despesa).filter_by(id=despesa_id, usuario_id=usuario_id).first()
+            if not despesa:
+                return False
+            despesa.descricao = descricao
+            despesa.valor = valor
+            despesa.categoria = categoria
+            if data_hora is not None:
+                despesa.data_hora = data_hora
+            session.commit()
+            return True
+
     def usuario_por_login(self, login: str):
         with self.Session() as session:
             return session.query(Usuario).filter_by(login=login).first()

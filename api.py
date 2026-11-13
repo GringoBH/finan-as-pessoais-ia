@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import datetime
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -21,6 +22,7 @@ ia = ClassificadorIA()
 class DespesaEntrada(BaseModel):
     texto: str
     valor: float
+    data: str | None = None  # "AAAA-MM-DD"; se vier vazio, usa o momento atual
 
 class LoginEntrada(BaseModel):
     login: str
@@ -51,6 +53,24 @@ def nova_sessao(usuario: Usuario) -> dict:
     repo.salvar_token(usuario.id, token)
     return {"token": token}
 
+def validar_despesa(entrada: DespesaEntrada) -> None:
+    entrada.texto = entrada.texto.strip()
+    if not entrada.texto:
+        raise HTTPException(status_code=400, detail="A descrição não pode ficar vazia")
+    if len(entrada.texto) > 120:
+        raise HTTPException(status_code=400, detail="Descrição muito longa (máximo 120 caracteres)")
+    if not (0 < entrada.valor < 1_000_000_000):
+        raise HTTPException(status_code=400, detail="Valor inválido")
+
+def data_hora_da_entrada(data: str | None) -> datetime:
+    if not data:
+        return datetime.utcnow()
+    try:
+        dia = datetime.strptime(data, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data inválida")
+    return dia.replace(hour=12)  # meio-dia UTC, para o dia não mudar entre fusos
+
 @app.post("/registro")
 def registro(r: RegistroEntrada):
     login = r.login.strip().lower()
@@ -78,15 +98,18 @@ def login(c: LoginEntrada):
 
 @app.post("/despesas")
 def criar_despesa(entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
+    validar_despesa(entrada)
+    data_hora = data_hora_da_entrada(entrada.data)
     categoria = ia.classificar(entrada.texto)
-    repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto,
-                        valor=entrada.valor, categoria=categoria))
+    repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
+                        categoria=categoria, data_hora=data_hora))
     return {"descricao": entrada.texto, "valor": entrada.valor, "categoria": categoria}
 
 @app.get("/despesas")
 def listar_despesas(usuario: Usuario = Depends(usuario_logado)):
     return [
         {
+            "id": d.id,
             "descricao": d.descricao,
             "valor": d.valor,
             "categoria": d.categoria,
@@ -98,3 +121,21 @@ def listar_despesas(usuario: Usuario = Depends(usuario_logado)):
         }
         for d in repo.listar(usuario.id)
     ]
+
+@app.put("/despesas/{despesa_id}")
+def editar_despesa(despesa_id: int, entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
+    validar_despesa(entrada)
+    atual = repo.buscar_despesa(despesa_id, usuario.id)
+    if not atual:
+        raise HTTPException(status_code=404, detail="Despesa não encontrada")
+    # só pede nova categoria à IA se a descrição mudou
+    categoria = atual.categoria if entrada.texto == atual.descricao else ia.classificar(entrada.texto)
+    nova_data = data_hora_da_entrada(entrada.data) if entrada.data else None
+    repo.atualizar_despesa(despesa_id, usuario.id, entrada.texto, entrada.valor, categoria, nova_data)
+    return {"ok": True, "categoria": categoria}
+
+@app.delete("/despesas/{despesa_id}")
+def apagar_despesa(despesa_id: int, usuario: Usuario = Depends(usuario_logado)):
+    if not repo.apagar_despesa(despesa_id, usuario.id):
+        raise HTTPException(status_code=404, detail="Despesa não encontrada")
+    return {"ok": True}

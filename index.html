@@ -1,152 +1,1008 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt-PT">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Minhas Finanças</title>
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#064e3b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Finanças">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
-  body { font-family: Arial, sans-serif; max-width: 700px; margin: 20px auto; padding: 0 10px; }
-  input, button { padding: 8px; margin: 4px 0; }
-  table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-  th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-  th { background: #f0f0f0; }
-  a { color: #06c; cursor: pointer; text-decoration: underline; }
-  small { color: #666; }
-  .erro { color: red; }
+  :root {
+    --papel: #f2f5f3;
+    --folha: #ffffff;
+    --tinta: #12251f;
+    --suave: #5d716a;
+    --linha: #d5dfdb;
+    --goteira: #eaf0ed;
+    --verde: #0f766e;
+    --fundo: #064e3b;
+    --menta: #99f6e4;
+    --ouro: #e5a50a;
+    --perigo: #b42318;
+    --raio: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font: 16px/1.45 ui-rounded, "SF Pro Rounded", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  [hidden] { display: none !important; }
+  h1, h2, h3, p { margin: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 3px solid var(--ouro); outline-offset: 2px; }
+
+  /* ---------- Cabeçalho + faixa de totais ---------- */
+  .topo {
+    background: linear-gradient(180deg, var(--verde), var(--fundo));
+    color: #fff;
+    padding: env(safe-area-inset-top) 0 0;
+  }
+  .topo-in { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  .topo-linha { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.1rem; }
+  .marca svg { width: 30px; height: 30px; flex: none; }
+  .btn-topo {
+    background: transparent; border: 1px solid rgba(255,255,255,.45); color: #fff;
+    padding: 6px 14px; border-radius: 999px;
+  }
+  .btn-topo:hover { background: rgba(255,255,255,.12); }
+  .faixa {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid rgba(153,246,228,.28);
+  }
+  .faixa > div { padding: 12px 14px 14px; border-left: 1px solid rgba(153,246,228,.28); display: flex; flex-direction: column; }
+  .faixa > div:first-child { border-left: 0; padding-left: 0; }
+  .faixa .rot { font-size: .85rem; color: var(--menta); }
+  .faixa strong { font-size: 1.3rem; line-height: 1.25; }
+  .faixa .sub { font-size: .8rem; color: rgba(255,255,255,.72); }
+
+  /* ---------- Estrutura ---------- */
+  .miolo { max-width: 1040px; margin: 0 auto; padding: 18px 16px 120px; }
+  .folha { background: var(--folha); border: 1px solid var(--linha); border-radius: var(--raio); }
+  .auth { max-width: 400px; margin: 28px auto 0; padding: 22px; }
+  .auth h2 { font-size: 1.25rem; margin-bottom: 14px; }
+  .auth .campo { margin-bottom: 12px; }
+  .auth .troca { margin-top: 14px; color: var(--suave); }
+  .campo { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: var(--suave); }
+  .campo input, .campo select, .barra input, .filtros select, .filtros input, .pag select {
+    border: 1px solid var(--linha); border-radius: 8px; background: #fff; padding: 10px 12px; color: var(--tinta); width: 100%;
+  }
+  .campo input, .campo select { min-height: 44px; }
+  .campo small { color: var(--suave); }
+  a.link { color: var(--verde); font-weight: 600; text-decoration: underline; cursor: pointer; }
+  .erro { color: var(--perigo); margin-top: 10px; min-height: 1.2em; }
+
+  .btn-primario {
+    background: var(--verde); color: #fff; border: 0; border-radius: 8px; padding: 11px 18px; font-weight: 700;
+  }
+  .btn-primario:hover { background: var(--fundo); }
+  .btn-primario:disabled { opacity: .6; cursor: wait; }
+  .btn-sec { background: #fff; border: 1px solid var(--linha); border-radius: 8px; padding: 10px 16px; }
+  .btn-sec:hover { background: var(--goteira); }
+  .btn-perigo { background: var(--perigo); color: #fff; border: 0; border-radius: 8px; padding: 10px 16px; font-weight: 700; }
+
+  .aviso {
+    position: fixed; z-index: 80; left: 50%; transform: translateX(-50%);
+    bottom: calc(24px + env(safe-area-inset-bottom)); max-width: calc(100% - 100px);
+    padding: 10px 16px; border-radius: 8px; color: #fff; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  }
+  .aviso.ok { background: var(--fundo); }
+  .aviso.erro { background: var(--perigo); }
+
+  /* ---------- Novo gasto ---------- */
+  .novo {
+    display: grid; grid-template-columns: 1fr 150px 170px auto; gap: 12px; align-items: end;
+    padding: 14px; margin-bottom: 18px;
+  }
+
+  /* ---------- Abas ---------- */
+  .abas { display: flex; gap: 4px; border-bottom: 1px solid var(--linha); margin-bottom: 14px; }
+  .abas button {
+    background: none; border: 0; padding: 10px 16px; color: var(--suave); font-weight: 700;
+    border-bottom: 3px solid transparent; margin-bottom: -1px;
+  }
+  .abas button[aria-selected="true"] { color: var(--fundo); border-bottom-color: var(--verde); }
+
+  /* ---------- Pesquisa e filtros ---------- */
+  .barra { margin-bottom: 10px; }
+  .barra input { padding-left: 14px; }
+  .filtros { margin-bottom: 12px; }
+  .filtros summary { cursor: pointer; color: var(--verde); font-weight: 700; padding: 6px 0; list-style-position: inside; }
+  .filtros .badge {
+    display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 999px; background: var(--ouro); color: #3b2a00;
+    font-size: .8rem; text-align: center; margin-left: 4px;
+  }
+  .filtros-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr) auto; gap: 10px; align-items: end;
+    padding: 12px; margin-top: 6px; background: var(--folha); border: 1px solid var(--linha); border-radius: var(--raio);
+  }
+
+  /* ---------- Tabela estilo planilha ---------- */
+  .folha-tabela { overflow-x: auto; background: var(--folha); border: 1px solid var(--linha); border-radius: var(--raio) var(--raio) 0 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border-bottom: 1px solid var(--linha); border-right: 1px solid var(--linha); padding: 8px 10px; text-align: left; vertical-align: middle; }
+  th:last-child, td:last-child { border-right: 0; }
+  thead th { background: var(--goteira); font-weight: 700; white-space: nowrap; padding: 0; }
+  thead th .ord, thead th > span { display: block; width: 100%; padding: 10px; background: none; border: 0; text-align: left; font-weight: 700; }
+  thead th .ord:hover { background: #dde8e3; }
+  .seta { color: var(--verde); margin-left: 4px; }
+  tbody tr:nth-child(even) td:not(.n) { background: #f8fbfa; }
+  tbody tr:hover td:not(.n) { background: #eefaf7; }
+  td.n, th.n { background: var(--goteira); color: var(--suave); text-align: right; width: 48px; font-size: .85rem; }
+  .col-data .d1 { display: block; font-weight: 600; white-space: nowrap; }
+  .col-data .d2 { display: block; font-size: .8rem; color: var(--suave); white-space: nowrap; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: #e0f4ef; color: var(--fundo); font-size: .85rem; white-space: nowrap; }
+  .tag-sm { display: none; margin-top: 4px; }
+  td.v, th.v { text-align: right; white-space: nowrap; font-weight: 700; }
+  td.ac { white-space: nowrap; width: 84px; text-align: center; padding: 4px; }
+  .ico { background: none; border: 0; padding: 6px; border-radius: 6px; color: var(--suave); line-height: 0; }
+  .ico:hover { background: var(--goteira); color: var(--tinta); }
+  .ico.apagar:hover { color: var(--perigo); }
+  .ico svg { width: 20px; height: 20px; }
+  .vazio { text-align: center; color: var(--suave); padding: 28px 12px; }
+  .vazio .btn-sec { margin-top: 10px; }
+
+  .rodape-tabela {
+    display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: var(--goteira); border: 1px solid var(--linha); border-top: 0; border-radius: 0 0 var(--raio) var(--raio);
+  }
+  .rodape-tabela strong { font-size: 1.05rem; }
+  .pag { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; margin-top: 12px; }
+  .pag select { width: auto; padding: 8px 10px; }
+  .pag button { min-width: 40px; padding: 8px 10px; background: #fff; border: 1px solid var(--linha); border-radius: 8px; }
+  .pag button:disabled { opacity: .4; cursor: default; }
+  .pag .pg-info { padding: 0 6px; color: var(--suave); }
+
+  /* ---------- Resumo ---------- */
+  .bloco { padding: 16px; margin-bottom: 16px; }
+  .bloco h2 { font-size: 1.1rem; }
+  .bloco-topo { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--linha); border-radius: 8px; overflow: hidden; }
+  .seg button { background: #fff; border: 0; padding: 8px 14px; border-left: 1px solid var(--linha); }
+  .seg button:first-child { border-left: 0; }
+  .seg button[aria-pressed="true"] { background: var(--verde); color: #fff; font-weight: 700; }
+  .lista-per { max-height: 420px; overflow-y: auto; }
+  .linha-per { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 14px; padding: 9px 0; border-top: 1px solid var(--linha); }
+  .linha-per:first-child { border-top: 0; }
+  .per-nome { font-weight: 600; }
+  .per-n { color: var(--suave); font-size: .9rem; align-self: center; }
+  .per-valor { font-weight: 700; text-align: right; min-width: 92px; }
+  .linha-per .trilho { grid-column: 1 / -1; height: 6px; background: var(--goteira); border-radius: 3px; overflow: hidden; }
+  .linha-per .trilho i { display: block; height: 100%; background: var(--verde); border-radius: 3px; }
+  .linha-per.cat .trilho i { background: var(--ouro); }
+
+  /* ---------- Diálogos ---------- */
+  dialog { border: 0; border-radius: 14px; padding: 20px; width: min(420px, calc(100% - 32px)); color: var(--tinta); }
+  dialog::backdrop { background: rgba(6, 40, 32, .55); }
+  dialog h3 { margin-bottom: 14px; font-size: 1.15rem; }
+  dialog .campo { margin-bottom: 12px; }
+  dialog .acoes { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  dialog p { color: var(--suave); }
+  dialog p strong { color: var(--tinta); }
+
+  /* ---------- Calculadora ---------- */
+  .calc-fab {
+    position: fixed; z-index: 40; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
+    width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--ouro); color: #3b2a00;
+    box-shadow: 0 6px 18px rgba(0,0,0,.28); display: grid; place-items: center;
+  }
+  .calc-fab svg { width: 28px; height: 28px; }
+  .calc {
+    position: fixed; z-index: 50; right: 18px; bottom: calc(86px + env(safe-area-inset-bottom)); width: 300px;
+    background: var(--fundo); color: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 12px 36px rgba(0,0,0,.4);
+  }
+  .calc-topo { display: flex; justify-content: space-between; align-items: center; font-weight: 700; padding: 0 4px 8px; }
+  .calc .mini { background: none; border: 0; color: #fff; font-size: 1.5rem; line-height: 1; padding: 0 6px; }
+  .calc-fita { min-height: 3.6em; padding: 6px 10px; background: #f6f1dc; color: #3a3320; border-radius: 8px 8px 0 0;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: .8rem; display: flex; flex-direction: column; justify-content: flex-end; }
+  .calc-fita button { background: none; border: 0; padding: 0; text-align: right; color: inherit; font: inherit; }
+  .calc-fita button:hover { text-decoration: underline; }
+  .calc-visor { background: #f6f1dc; color: #1c1a10; padding: 2px 12px 10px; border-radius: 0 0 8px 8px; margin-bottom: 10px; text-align: right; }
+  .calc-expr { min-height: 1.3em; font-size: .9rem; color: #6b6440; overflow-x: auto; white-space: nowrap; }
+  .calc-res { font-size: 2rem; font-weight: 700; line-height: 1.2; overflow-x: auto; white-space: nowrap; }
+  .calc-teclas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .calc-teclas button { height: 48px; border: 0; border-radius: 10px; background: #0f766e; color: #fff; font-size: 1.15rem; font-weight: 600; }
+  .calc-teclas button:active { filter: brightness(1.25); }
+  .calc-teclas .t-fn { background: #2c6a5d; }
+  .calc-teclas .t-op { background: #0b5f58; color: var(--menta); }
+  .calc-teclas .t-ig { background: var(--ouro); color: #3b2a00; }
+  .calc-teclas .t-zero { grid-column: span 2; }
+  .calc-usar { width: 100%; margin-top: 10px; background: var(--menta); color: var(--fundo); border: 0; border-radius: 10px; padding: 11px; font-weight: 700; }
+
+  /* ---------- Telemóvel ---------- */
+  @media (max-width: 760px) {
+    .faixa { grid-template-columns: repeat(2, 1fr); }
+    .faixa > div:nth-child(3) { border-left: 0; padding-left: 0; }
+    .faixa > div:nth-child(n+3) { border-top: 1px solid rgba(153,246,228,.28); }
+    .novo { grid-template-columns: 1fr 1fr; }
+    .novo .c-desc { grid-column: 1 / -1; }
+    .novo button { grid-column: 1 / -1; }
+    .filtros-grid { grid-template-columns: 1fr 1fr; }
+    .rodape-tabela { justify-content: flex-start; }
+    .pag { justify-content: center; }
+    .col-cat, th.col-cat { display: none; }
+    .tag-sm { display: inline-block; }
+    th, td { padding: 7px 8px; }
+    td.n, th.n { width: 36px; }
+    td.ac { width: auto; }
+    .ico { padding: 4px; }
+    .th-ac .rot { display: none; }
+    .calc { left: 0; right: 0; bottom: 0; width: auto; border-radius: 18px 18px 0 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+  }
+  @media (max-width: 480px) {
+    td.n, th.n { display: none; }
+    .hora { display: none; }
+    body { font-size: 15px; }
+  }
+  @media (max-width: 400px) {
+    th, td { padding: 6px; }
+    .col-data .d1 { font-size: .9rem; }
+    .ico svg { width: 18px; height: 18px; }
+    .ico { padding: 3px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<h1>Minhas Finanças</h1>
 
-<div id="telaLogin">
-  <h3>Entrar</h3>
-  <input id="loginUser" placeholder="Usuário"><br>
-  <input id="loginSenha" type="password" placeholder="Senha"><br>
-  <button onclick="entrar()">Entrar</button>
-  <p>Não tem conta? <a onclick="trocarTela('cadastro')">Criar conta</a></p>
-  <p id="erroLogin" class="erro"></p>
-</div>
+<header class="topo">
+  <div class="topo-in">
+    <div class="topo-linha">
+      <div class="marca">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#d97706"/><circle cx="16" cy="16" r="12.5" fill="#fbbf24"/><text x="16" y="22" text-anchor="middle" font-size="17" font-weight="700" fill="#78350f" font-family="Arial, sans-serif">€</text></svg>
+        <span>Minhas Finanças</span>
+      </div>
+      <button id="btnSair" class="btn-topo" type="button" hidden>Sair</button>
+    </div>
+    <div id="faixa" class="faixa" hidden>
+      <div><span class="rot">Hoje</span><strong id="fDia">—</strong><span class="sub" id="fDiaN"></span></div>
+      <div><span class="rot">Esta semana</span><strong id="fSem">—</strong><span class="sub" id="fSemN"></span></div>
+      <div><span class="rot">Este mês</span><strong id="fMes">—</strong><span class="sub" id="fMesN"></span></div>
+      <div><span class="rot">Este ano</span><strong id="fAno">—</strong><span class="sub" id="fAnoN"></span></div>
+    </div>
+  </div>
+</header>
 
-<div id="telaCadastro" style="display:none">
-  <h3>Criar conta</h3>
-  <input id="cadUser" placeholder="Usuário (mín. 3, sem espaços)"><br>
-  <input id="cadEmail" type="email" placeholder="Email (opcional)"><br>
-  <small>O email servirá para recuperar a senha no futuro.</small><br>
-  <input id="cadSenha" type="password" placeholder="Senha (mín. 6)"><br>
-  <input id="cadSenha2" type="password" placeholder="Repetir senha"><br>
-  <button onclick="cadastrar()">Criar conta</button>
-  <p>Já tem conta? <a onclick="trocarTela('login')">Entrar</a></p>
-  <p id="erroCadastro" class="erro"></p>
-</div>
+<div id="aviso" class="aviso" role="status" hidden></div>
 
-<div id="telaApp" style="display:none">
-  <button onclick="sair()">Sair</button>
-  <form id="form">
-    <input id="texto" placeholder="Descrição (ex: água)" required>
-    <input id="valor" type="number" step="0.01" placeholder="Valor" required>
-    <button>Adicionar</button>
+<main class="miolo">
+
+  <!-- Entrar -->
+  <section id="telaLogin" class="folha auth">
+    <h2>Entrar</h2>
+    <label class="campo">Usuário<input id="loginUser" autocomplete="username" autocapitalize="none"></label>
+    <label class="campo">Senha<input id="loginSenha" type="password" autocomplete="current-password"></label>
+    <button id="btnEntrar" class="btn-primario" type="button">Entrar</button>
+    <p class="troca">Não tem conta? <a class="link" id="irCadastro">Criar conta</a></p>
+    <p id="erroLogin" class="erro"></p>
+  </section>
+
+  <!-- Criar conta -->
+  <section id="telaCadastro" class="folha auth" hidden>
+    <h2>Criar conta</h2>
+    <label class="campo">Usuário<input id="cadUser" autocomplete="username" autocapitalize="none"><small>Mínimo 3 caracteres, sem espaços.</small></label>
+    <label class="campo">Email (opcional)<input id="cadEmail" type="email" autocomplete="email"><small>Servirá para recuperar a senha no futuro.</small></label>
+    <label class="campo">Senha<input id="cadSenha" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
+    <label class="campo">Repetir senha<input id="cadSenha2" type="password" autocomplete="new-password"></label>
+    <button id="btnCadastrar" class="btn-primario" type="button">Criar conta</button>
+    <p class="troca">Já tem conta? <a class="link" id="irLogin">Entrar</a></p>
+    <p id="erroCadastro" class="erro"></p>
+  </section>
+
+  <!-- App -->
+  <div id="telaApp" hidden>
+
+    <form id="form" class="folha novo" autocomplete="off">
+      <label class="campo c-desc">Descrição<input id="texto" required maxlength="120" placeholder="ex: café, metro, supermercado"></label>
+      <label class="campo c-valor">Valor (€)<input id="valor" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00"></label>
+      <label class="campo c-data">Data<input id="data" type="date" required></label>
+      <button id="btnAdicionar" class="btn-primario">Adicionar gasto</button>
+    </form>
+
+    <nav class="abas" role="tablist" aria-label="Secções">
+      <button type="button" role="tab" data-aba="registros" aria-selected="true">Registros</button>
+      <button type="button" role="tab" data-aba="resumo" aria-selected="false">Resumo</button>
+    </nav>
+
+    <!-- Registros -->
+    <section id="abaRegistros">
+      <div class="barra">
+        <input id="busca" type="search" placeholder="Pesquisar por descrição, categoria ou valor" aria-label="Pesquisar gastos">
+      </div>
+      <details class="filtros" id="detFiltros">
+        <summary>Filtros <span id="nFiltros" class="badge" hidden></span></summary>
+        <div class="filtros-grid">
+          <label class="campo">Categoria<select id="fCategoria"><option value="">Todas</option></select></label>
+          <label class="campo">De<input id="fDe" type="date"></label>
+          <label class="campo">Até<input id="fAte" type="date"></label>
+          <label class="campo">Valor mínimo<input id="fMin" type="number" step="0.01" min="0" inputmode="decimal"></label>
+          <label class="campo">Valor máximo<input id="fMax" type="number" step="0.01" min="0" inputmode="decimal"></label>
+          <button id="btnLimpar" class="btn-sec" type="button">Limpar</button>
+        </div>
+      </details>
+
+      <div class="folha-tabela">
+        <table id="tabela">
+          <thead>
+            <tr>
+              <th class="n"><span>#</span></th>
+              <th aria-sort="none" data-col="data"><button class="ord" type="button" data-ord="data">Data<span class="seta"></span></button></th>
+              <th aria-sort="none" data-col="descricao"><button class="ord" type="button" data-ord="descricao">Descrição<span class="seta"></span></button></th>
+              <th aria-sort="none" data-col="categoria" class="col-cat"><button class="ord" type="button" data-ord="categoria">Categoria<span class="seta"></span></button></th>
+              <th aria-sort="none" data-col="valor" class="v"><button class="ord" type="button" data-ord="valor" style="text-align:right">Valor<span class="seta"></span></button></th>
+              <th class="th-ac" aria-label="Ações"><span style="text-align:center"><span class="rot">Ações</span></span></th>
+            </tr>
+          </thead>
+          <tbody id="corpo"></tbody>
+        </table>
+      </div>
+      <div class="rodape-tabela">
+        <span id="infoPag"></span>
+        <span>Total filtrado: <strong id="totalFiltrado">—</strong></span>
+      </div>
+      <div class="pag">
+        <label for="porPagina" style="color:var(--suave)">Linhas por página</label>
+        <select id="porPagina">
+          <option>10</option><option selected>25</option><option>50</option><option>100</option>
+        </select>
+        <button id="pgPrim" type="button" aria-label="Primeira página">«</button>
+        <button id="pgAnt" type="button" aria-label="Página anterior">‹</button>
+        <span class="pg-info" id="pgInfo"></span>
+        <button id="pgProx" type="button" aria-label="Página seguinte">›</button>
+        <button id="pgUlt" type="button" aria-label="Última página">»</button>
+      </div>
+    </section>
+
+    <!-- Resumo -->
+    <section id="abaResumo" hidden>
+      <div class="folha bloco">
+        <div class="bloco-topo">
+          <h2>Totais por período</h2>
+          <div class="seg" role="group" aria-label="Agrupar por">
+            <button type="button" data-agrupar="dia" aria-pressed="false">Dia</button>
+            <button type="button" data-agrupar="semana" aria-pressed="false">Semana</button>
+            <button type="button" data-agrupar="mes" aria-pressed="true">Mês</button>
+            <button type="button" data-agrupar="ano" aria-pressed="false">Ano</button>
+          </div>
+        </div>
+        <div id="listaPeriodos" class="lista-per"></div>
+      </div>
+      <div class="folha bloco">
+        <div class="bloco-topo"><h2>Por categoria</h2></div>
+        <div id="listaCategorias"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- Editar gasto -->
+<dialog id="dlgEditar">
+  <form id="formEditar" autocomplete="off">
+    <h3>Editar gasto</h3>
+    <label class="campo">Descrição<input id="edTexto" required maxlength="120"></label>
+    <label class="campo">Valor (€)<input id="edValor" type="number" step="0.01" min="0.01" inputmode="decimal" required></label>
+    <label class="campo">Data<input id="edData" type="date" required></label>
+    <div class="acoes">
+      <button type="button" class="btn-sec" id="edCancelar">Cancelar</button>
+      <button class="btn-primario" id="edSalvar">Salvar</button>
+    </div>
   </form>
-  <table>
-    <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead>
-    <tbody id="corpo"></tbody>
-  </table>
-  <h3>Total: € <span id="total">0.00</span></h3>
-</div>
+</dialog>
+
+<!-- Apagar gasto -->
+<dialog id="dlgApagar">
+  <h3>Apagar este gasto?</h3>
+  <p id="apTexto"></p>
+  <div class="acoes">
+    <button type="button" class="btn-sec" id="apCancelar">Cancelar</button>
+    <button type="button" class="btn-perigo" id="apConfirmar">Apagar</button>
+  </div>
+</dialog>
+
+<!-- Calculadora -->
+<button id="btnCalc" class="calc-fab" type="button" aria-label="Abrir calculadora" aria-expanded="false" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2.5"/><rect x="8" y="5" width="8" height="4" rx="1"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 17h.01M12 17h.01M15.5 17h.01"/></svg>
+</button>
+<aside id="calc" class="calc" aria-label="Calculadora" hidden>
+  <div class="calc-topo"><span>Calculadora</span><button id="calcFechar" class="mini" type="button" aria-label="Fechar calculadora">×</button></div>
+  <div class="calc-fita" id="calcFita" aria-live="polite"></div>
+  <div class="calc-visor"><div class="calc-expr" id="calcExpr"></div><div class="calc-res" id="calcRes">0</div></div>
+  <div class="calc-teclas" id="calcTeclas">
+    <button type="button" data-k="C" class="t-fn">C</button>
+    <button type="button" data-k="B" class="t-fn" aria-label="Apagar">⌫</button>
+    <button type="button" data-k="%" class="t-fn">%</button>
+    <button type="button" data-k="/" class="t-op" aria-label="Dividir">÷</button>
+    <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+    <button type="button" data-k="*" class="t-op" aria-label="Multiplicar">×</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+    <button type="button" data-k="-" class="t-op" aria-label="Subtrair">−</button>
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="+" class="t-op" aria-label="Somar">+</button>
+    <button type="button" data-k="0" class="t-zero">0</button>
+    <button type="button" data-k=".">,</button>
+    <button type="button" data-k="=" class="t-ig">=</button>
+  </div>
+  <button id="calcUsar" class="calc-usar" type="button">Usar no campo Valor</button>
+</aside>
 
 <script>
 const API_URL = "https://finan-as-pessoais-ia.onrender.com";
 const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, "0");
+const eur = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" });
+const semAcento = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const chaveDia = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
+const plural = (n) => `${n} ${n === 1 ? "gasto" : "gastos"}`;
 
-function trocarTela(tela) {
-  $("telaLogin").style.display = tela === "login" ? "block" : "none";
-  $("telaCadastro").style.display = tela === "cadastro" ? "block" : "none";
-  $("telaApp").style.display = tela === "app" ? "block" : "none";
+/* ============ Estado ============ */
+const estado = {
+  despesas: [], carregando: false,
+  busca: "", categoria: "", de: "", ate: "", min: "", max: "",
+  ord: { campo: "data", dir: "desc" },
+  pagina: 1, porPagina: 25, agrupar: "mes", aba: "registros",
+};
+
+/* ============ Datas ============ */
+function infoSemana(dt) {
+  const base = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+  const diaSem = (base.getUTCDay() + 6) % 7; // segunda = 0
+  const segunda = new Date(base); segunda.setUTCDate(base.getUTCDate() - diaSem);
+  const domingo = new Date(segunda); domingo.setUTCDate(segunda.getUTCDate() + 6);
+  const quinta = new Date(segunda); quinta.setUTCDate(segunda.getUTCDate() + 3);
+  const ano = quinta.getUTCFullYear();
+  const numero = Math.floor((quinta - new Date(Date.UTC(ano, 0, 1))) / 86400000 / 7) + 1;
+  return { ano, numero, segunda, domingo };
+}
+const diaMesUTC = (d) => `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+
+function normalizar(d) {
+  const dt = new Date(d.data_hora.replace(/(\.\d{3})\d+/, "$1") + "Z");
+  const sem = infoSemana(dt);
+  const meioDia = dt.getUTCHours() === 12 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0;
+  return {
+    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor,
+    dt, ts: dt.getTime(), semHora: meioDia,
+    dia: chaveDia(dt), mes: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`, ano: String(dt.getFullYear()),
+    semana: `${sem.ano}-S${pad(sem.numero)}`, sem,
+    busca: semAcento(`${d.descricao} ${d.categoria} ${d.valor.toFixed(2)} ${d.valor.toFixed(2).replace(".", ",")}`),
+  };
+}
+const diaSemanaCurto = (dt) => ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][dt.getDay()];
+const fmtData = (dt) => `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+const fmtHora = (dt) => `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+
+/* ============ Avisos ============ */
+let tAviso;
+function avisar(msg, tipo = "ok") {
+  const a = $("aviso");
+  a.textContent = msg; a.className = "aviso " + tipo; a.hidden = false;
+  clearTimeout(tAviso); tAviso = setTimeout(() => { a.hidden = true; }, 5000);
+}
+
+/* ============ API ============ */
+async function chamar(caminho, opcoes = {}) {
+  let r;
+  try {
+    r = await fetch(API_URL + caminho, {
+      ...opcoes,
+      headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") || "" },
+    });
+  } catch (e) {
+    throw new Error("Sem ligação ao servidor. Verifique a internet e tente de novo.");
+  }
+  if (r.status === 401 && localStorage.getItem("token")) { sair(); throw new Error("Sessão expirada. Entre de novo."); }
+  let dados = {};
+  try { dados = await r.json(); } catch (e) { /* resposta sem corpo */ }
+  if (!r.ok) {
+    const det = dados.detail;
+    throw new Error(typeof det === "string" ? det : "Não foi possível concluir. Tente de novo.");
+  }
+  return dados;
+}
+
+/* ============ Telas e acesso ============ */
+function mostrarTela(nome) {
+  $("telaLogin").hidden = nome !== "login";
+  $("telaCadastro").hidden = nome !== "cadastro";
+  $("telaApp").hidden = nome !== "app";
+  const logado = nome === "app";
+  $("btnSair").hidden = !logado;
+  $("faixa").hidden = !logado;
+  $("btnCalc").hidden = !logado;
+  if (!logado) calcFechar();
   $("erroLogin").textContent = "";
   $("erroCadastro").textContent = "";
 }
 
-function mostrar() {
+function iniciar() {
   if (localStorage.getItem("token")) {
-    trocarTela("app");
+    $("data").value = chaveDia(new Date());
+    mostrarTela("app");
     carregarDespesas();
   } else {
-    trocarTela("login");
+    mostrarTela("login");
   }
 }
 
 function sair() {
   localStorage.removeItem("token");
-  mostrar();
+  estado.despesas = [];
+  iniciar();
 }
 
-async function chamar(caminho, opcoes = {}) {
-  const r = await fetch(API_URL + caminho, {
-    ...opcoes,
-    headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") || "" },
-  });
-  if (r.status === 401 && localStorage.getItem("token")) { sair(); throw new Error("Sessão expirada"); }
-  const dados = await r.json();
-  if (!r.ok) throw new Error(dados.detail || "Erro");
-  return dados;
-}
-
-async function enviarAcesso(caminho, corpo, idErro) {
-  $(idErro).textContent = "A processar... (se demorar, o servidor está a acordar)";
+async function enviarAcesso(caminho, corpo, idErro, botao) {
+  $(idErro).textContent = "A processar… se demorar, o servidor está a acordar (até 1 minuto).";
+  botao.disabled = true;
   try {
     const dados = await chamar(caminho, { method: "POST", body: JSON.stringify(corpo) });
     localStorage.setItem("token", dados.token);
-    mostrar();
+    iniciar();
   } catch (e) {
     $(idErro).textContent = e.message;
+  } finally {
+    botao.disabled = false;
   }
 }
 
-function entrar() {
-  enviarAcesso("/login", { login: $("loginUser").value, senha: $("loginSenha").value }, "erroLogin");
-}
+$("btnEntrar").addEventListener("click", () =>
+  enviarAcesso("/login", { login: $("loginUser").value, senha: $("loginSenha").value }, "erroLogin", $("btnEntrar")));
+$("loginSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnEntrar").click(); });
+$("btnCadastrar").addEventListener("click", () => {
+  if ($("cadSenha").value !== $("cadSenha2").value) { $("erroCadastro").textContent = "As senhas não coincidem."; return; }
+  enviarAcesso("/registro", { login: $("cadUser").value, email: $("cadEmail").value, senha: $("cadSenha").value }, "erroCadastro", $("btnCadastrar"));
+});
+$("irCadastro").addEventListener("click", () => mostrarTela("cadastro"));
+$("irLogin").addEventListener("click", () => mostrarTela("login"));
+$("btnSair").addEventListener("click", sair);
 
-function cadastrar() {
-  if ($("cadSenha").value !== $("cadSenha2").value) {
-    $("erroCadastro").textContent = "As senhas não coincidem";
-    return;
-  }
-  enviarAcesso("/registro", {
-    login: $("cadUser").value,
-    email: $("cadEmail").value,
-    senha: $("cadSenha").value,
-  }, "erroCadastro");
-}
-
+/* ============ Carregar dados ============ */
 async function carregarDespesas() {
+  estado.carregando = true; desenhar();
   try {
     const lista = await chamar("/despesas");
-    $("corpo").innerHTML = "";
-    let total = 0;
-    for (const d of lista) {
-      total += d.valor;
-      const data = new Date(d.data_hora + "Z").toLocaleString("pt-PT");
-      $("corpo").innerHTML += `<tr><td>${data}</td><td>${d.descricao}</td><td>${d.categoria}</td><td>${d.valor.toFixed(2)}</td></tr>`;
-    }
-    $("total").textContent = total.toFixed(2);
-  } catch (e) { console.log(e); }
+    estado.despesas = lista.map(normalizar);
+  } catch (e) {
+    avisar(e.message, "erro");
+  }
+  estado.carregando = false; desenhar();
 }
 
+/* ============ Filtros, ordenação, paginação ============ */
+function filtradas() {
+  const termos = semAcento(estado.busca.trim()).split(/\s+/).filter(Boolean);
+  const min = estado.min === "" ? null : parseFloat(estado.min);
+  const max = estado.max === "" ? null : parseFloat(estado.max);
+  const lista = estado.despesas.filter((d) => {
+    if (termos.length && !termos.every((t) => d.busca.includes(t))) return false;
+    if (estado.categoria && d.categoria !== estado.categoria) return false;
+    if (estado.de && d.dia < estado.de) return false;
+    if (estado.ate && d.dia > estado.ate) return false;
+    if (min !== null && !isNaN(min) && d.valor < min) return false;
+    if (max !== null && !isNaN(max) && d.valor > max) return false;
+    return true;
+  });
+  const f = estado.ord.dir === "asc" ? 1 : -1;
+  const campo = estado.ord.campo;
+  lista.sort((a, b) => {
+    let r;
+    if (campo === "data") r = a.ts - b.ts;
+    else if (campo === "valor") r = a.valor - b.valor;
+    else r = a[campo].localeCompare(b[campo], "pt");
+    return r * f || b.ts - a.ts;
+  });
+  return lista;
+}
+
+function filtrosAtivos() {
+  return ["categoria", "de", "ate", "min", "max"].filter((k) => estado[k] !== "").length;
+}
+
+/* ============ Desenho ============ */
+function desenhar() {
+  desenharFaixa();
+  desenharCategoriasFiltro();
+  desenharTabela();
+  desenharResumo();
+}
+
+function desenharFaixa() {
+  const agora = new Date();
+  const kDia = chaveDia(agora);
+  const kMes = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}`;
+  const kAno = String(agora.getFullYear());
+  const s = infoSemana(agora);
+  const kSem = `${s.ano}-S${pad(s.numero)}`;
+  const acc = { dia: [0, 0], sem: [0, 0], mes: [0, 0], ano: [0, 0] };
+  for (const d of estado.despesas) {
+    if (d.dia === kDia) { acc.dia[0] += d.valor; acc.dia[1]++; }
+    if (d.semana === kSem) { acc.sem[0] += d.valor; acc.sem[1]++; }
+    if (d.mes === kMes) { acc.mes[0] += d.valor; acc.mes[1]++; }
+    if (d.ano === kAno) { acc.ano[0] += d.valor; acc.ano[1]++; }
+  }
+  const pares = [["fDia", "dia"], ["fSem", "sem"], ["fMes", "mes"], ["fAno", "ano"]];
+  for (const [id, k] of pares) {
+    $(id).textContent = eur.format(acc[k][0]);
+    $(id + "N").textContent = plural(acc[k][1]);
+  }
+}
+
+function desenharCategoriasFiltro() {
+  const sel = $("fCategoria");
+  const cats = [...new Set(estado.despesas.map((d) => d.categoria))].sort((a, b) => a.localeCompare(b, "pt"));
+  const atual = estado.categoria;
+  sel.innerHTML = `<option value="">Todas</option>` + cats.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("");
+  sel.value = cats.includes(atual) ? atual : "";
+  if (sel.value !== atual) estado.categoria = sel.value;
+}
+
+function desenharTabela() {
+  const lista = filtradas();
+  const total = lista.length;
+  const paginas = Math.max(1, Math.ceil(total / estado.porPagina));
+  estado.pagina = Math.min(Math.max(1, estado.pagina), paginas);
+  const ini = (estado.pagina - 1) * estado.porPagina;
+  const fatia = lista.slice(ini, ini + estado.porPagina);
+
+  const nf = filtrosAtivos();
+  $("nFiltros").hidden = nf === 0;
+  $("nFiltros").textContent = nf;
+
+  const corpo = $("corpo");
+  if (estado.carregando && !estado.despesas.length) {
+    corpo.innerHTML = `<tr><td colspan="6" class="vazio">A carregar os seus gastos… se o servidor estiver a dormir, pode demorar até 1 minuto.</td></tr>`;
+  } else if (!estado.despesas.length) {
+    corpo.innerHTML = `<tr><td colspan="6" class="vazio">Ainda não há gastos. Adicione o primeiro no formulário acima.</td></tr>`;
+  } else if (!total) {
+    corpo.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum gasto corresponde à pesquisa e aos filtros.<br><button type="button" class="btn-sec" data-acao="limpar">Limpar pesquisa e filtros</button></td></tr>`;
+  } else {
+    corpo.innerHTML = fatia.map((d, i) => {
+      const hora = d.semHora ? "" : `<span class="hora"> · ${fmtHora(d.dt)}</span>`;
+      return `<tr>
+        <td class="n">${ini + i + 1}</td>
+        <td class="col-data"><span class="d1">${fmtData(d.dt)}</span><span class="d2">${diaSemanaCurto(d.dt)} · sem ${d.sem.numero}${hora}</span></td>
+        <td class="col-desc">${esc(d.descricao)}<br><span class="tag tag-sm">${esc(d.categoria)}</span></td>
+        <td class="col-cat"><span class="tag">${esc(d.categoria)}</span></td>
+        <td class="v">${eur.format(d.valor)}</td>
+        <td class="ac">
+          <button class="ico" type="button" data-acao="editar" data-id="${d.id}" aria-label="Editar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+          <button class="ico apagar" type="button" data-acao="apagar" data-id="${d.id}" aria-label="Apagar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>
+        </td></tr>`;
+    }).join("");
+  }
+
+  const soma = lista.reduce((s, d) => s + d.valor, 0);
+  $("totalFiltrado").textContent = eur.format(soma);
+  $("infoPag").textContent = total ? `Mostrando ${ini + 1}–${ini + fatia.length} de ${total}` : "Nenhum registro";
+  $("pgInfo").textContent = `Página ${estado.pagina} de ${paginas}`;
+  $("pgPrim").disabled = $("pgAnt").disabled = estado.pagina <= 1;
+  $("pgProx").disabled = $("pgUlt").disabled = estado.pagina >= paginas;
+  $("pgUlt").dataset.ultima = paginas;
+
+  document.querySelectorAll("thead th[data-col]").forEach((th) => {
+    const ativo = th.dataset.col === estado.ord.campo;
+    th.setAttribute("aria-sort", ativo ? (estado.ord.dir === "asc" ? "ascending" : "descending") : "none");
+    th.querySelector(".seta").textContent = ativo ? (estado.ord.dir === "asc" ? "↑" : "↓") : "";
+  });
+}
+
+function rotuloPeriodo(modo, d) {
+  if (modo === "dia") return `${fmtData(d.dt)} (${diaSemanaCurto(d.dt)})`;
+  if (modo === "semana") return `Semana ${d.sem.numero} de ${d.sem.ano} · ${diaMesUTC(d.sem.segunda)} a ${diaMesUTC(d.sem.domingo)}`;
+  if (modo === "mes") {
+    const t = d.dt.toLocaleDateString("pt-PT", { month: "long", year: "numeric" });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  return d.ano;
+}
+
+function desenharResumo() {
+  document.querySelectorAll("[data-agrupar]").forEach((b) =>
+    b.setAttribute("aria-pressed", String(b.dataset.agrupar === estado.agrupar)));
+  if (estado.aba !== "resumo") return;
+
+  const chave = { dia: "dia", semana: "semana", mes: "mes", ano: "ano" }[estado.agrupar];
+  const grupos = new Map();
+  for (const d of estado.despesas) {
+    const g = grupos.get(d[chave]) || { k: d[chave], total: 0, n: 0, ref: d };
+    g.total += d.valor; g.n++;
+    grupos.set(d[chave], g);
+  }
+  const lista = [...grupos.values()].sort((a, b) => (a.k < b.k ? 1 : -1));
+  const maior = Math.max(1, ...lista.map((g) => g.total));
+  $("listaPeriodos").innerHTML = lista.length
+    ? lista.map((g) => `<div class="linha-per">
+        <span class="per-nome">${esc(rotuloPeriodo(estado.agrupar, g.ref))}</span>
+        <span class="per-n">${plural(g.n)}</span>
+        <span class="per-valor">${eur.format(g.total)}</span>
+        <span class="trilho"><i style="width:${(g.total / maior * 100).toFixed(1)}%"></i></span></div>`).join("")
+    : `<p class="vazio">Sem gastos para resumir.</p>`;
+
+  const cats = new Map();
+  for (const d of estado.despesas) {
+    const c = cats.get(d.categoria) || { nome: d.categoria, total: 0, n: 0 };
+    c.total += d.valor; c.n++; cats.set(d.categoria, c);
+  }
+  const todas = [...cats.values()].sort((a, b) => b.total - a.total);
+  const soma = todas.reduce((s, c) => s + c.total, 0) || 1;
+  const topo = todas.length ? todas[0].total : 1;
+  $("listaCategorias").innerHTML = todas.length
+    ? todas.map((c) => `<div class="linha-per cat">
+        <span class="per-nome">${esc(c.nome)}</span>
+        <span class="per-n">${(c.total / soma * 100).toFixed(0)}% · ${plural(c.n)}</span>
+        <span class="per-valor">${eur.format(c.total)}</span>
+        <span class="trilho"><i style="width:${(c.total / topo * 100).toFixed(1)}%"></i></span></div>`).join("")
+    : `<p class="vazio">Sem gastos para resumir.</p>`;
+}
+
+/* ============ Interações: abas, busca, filtros, páginas ============ */
+function mudarAba(aba) {
+  estado.aba = aba;
+  $("abaRegistros").hidden = aba !== "registros";
+  $("abaResumo").hidden = aba !== "resumo";
+  document.querySelectorAll("[data-aba]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.aba === aba)));
+  desenharResumo();
+}
+document.querySelectorAll("[data-aba]").forEach((b) => b.addEventListener("click", () => mudarAba(b.dataset.aba)));
+document.querySelectorAll("[data-agrupar]").forEach((b) => b.addEventListener("click", () => { estado.agrupar = b.dataset.agrupar; desenharResumo(); }));
+
+function aoFiltrar() { estado.pagina = 1; desenharTabela(); }
+$("busca").addEventListener("input", (e) => { estado.busca = e.target.value; aoFiltrar(); });
+$("fCategoria").addEventListener("change", (e) => { estado.categoria = e.target.value; aoFiltrar(); });
+$("fDe").addEventListener("change", (e) => { estado.de = e.target.value; aoFiltrar(); });
+$("fAte").addEventListener("change", (e) => { estado.ate = e.target.value; aoFiltrar(); });
+$("fMin").addEventListener("input", (e) => { estado.min = e.target.value; aoFiltrar(); });
+$("fMax").addEventListener("input", (e) => { estado.max = e.target.value; aoFiltrar(); });
+
+function limparFiltros() {
+  Object.assign(estado, { busca: "", categoria: "", de: "", ate: "", min: "", max: "" });
+  $("busca").value = ""; $("fDe").value = ""; $("fAte").value = ""; $("fMin").value = ""; $("fMax").value = "";
+  $("fCategoria").value = "";
+  aoFiltrar();
+}
+$("btnLimpar").addEventListener("click", limparFiltros);
+
+document.querySelectorAll("[data-ord]").forEach((b) => b.addEventListener("click", () => {
+  const campo = b.dataset.ord;
+  if (estado.ord.campo === campo) estado.ord.dir = estado.ord.dir === "asc" ? "desc" : "asc";
+  else estado.ord = { campo, dir: campo === "data" || campo === "valor" ? "desc" : "asc" };
+  estado.pagina = 1; desenharTabela();
+}));
+
+$("porPagina").addEventListener("change", (e) => { estado.porPagina = parseInt(e.target.value, 10); estado.pagina = 1; desenharTabela(); });
+$("pgPrim").addEventListener("click", () => { estado.pagina = 1; desenharTabela(); });
+$("pgAnt").addEventListener("click", () => { estado.pagina--; desenharTabela(); });
+$("pgProx").addEventListener("click", () => { estado.pagina++; desenharTabela(); });
+$("pgUlt").addEventListener("click", () => { estado.pagina = parseInt($("pgUlt").dataset.ultima || "1", 10); desenharTabela(); });
+
+/* ============ Adicionar, editar, apagar ============ */
 $("form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
+  const texto = $("texto").value.trim();
+  const valor = parseFloat($("valor").value);
+  if (!texto) { avisar("Escreva uma descrição.", "erro"); return; }
+  if (isNaN(valor) || valor <= 0) { avisar("Informe um valor maior que zero.", "erro"); return; }
+  const corpo = { texto, valor };
+  if ($("data").value && $("data").value !== chaveDia(new Date())) corpo.data = $("data").value;
+  const botao = $("btnAdicionar");
+  botao.disabled = true; botao.textContent = "A classificar…";
   try {
-    await chamar("/despesas", {
-      method: "POST",
-      body: JSON.stringify({ texto: $("texto").value, valor: parseFloat($("valor").value) }),
-    });
+    await chamar("/despesas", { method: "POST", body: JSON.stringify(corpo) });
     $("form").reset();
-    carregarDespesas();
-  } catch (e) { alert("Erro: " + e.message); }
+    $("data").value = chaveDia(new Date());
+    estado.pagina = 1;
+    await carregarDespesas();
+    avisar("Gasto adicionado.");
+  } catch (e) {
+    avisar(e.message, "erro");
+  } finally {
+    botao.disabled = false; botao.textContent = "Adicionar gasto";
+  }
 });
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("service-worker.js");
-mostrar();
+
+let alvo = null; // gasto aberto no diálogo
+$("corpo").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-acao]");
+  if (!b) return;
+  if (b.dataset.acao === "limpar") { limparFiltros(); return; }
+  alvo = estado.despesas.find((d) => String(d.id) === b.dataset.id);
+  if (!alvo) return;
+  if (b.dataset.acao === "editar") {
+    $("edTexto").value = alvo.descricao;
+    $("edValor").value = alvo.valor;
+    $("edData").value = alvo.dia;
+    $("dlgEditar").showModal();
+  } else {
+    $("apTexto").innerHTML = `<strong>${esc(alvo.descricao)}</strong> · ${eur.format(alvo.valor)} · ${fmtData(alvo.dt)}<br>Esta ação não pode ser desfeita.`;
+    $("dlgApagar").showModal();
+  }
+});
+
+$("edCancelar").addEventListener("click", () => $("dlgEditar").close());
+$("formEditar").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!alvo) return;
+  const texto = $("edTexto").value.trim();
+  const valor = parseFloat($("edValor").value);
+  if (!texto || isNaN(valor) || valor <= 0) { avisar("Confira a descrição e o valor.", "erro"); return; }
+  const corpo = { texto, valor };
+  if ($("edData").value && $("edData").value !== alvo.dia) corpo.data = $("edData").value;
+  $("edSalvar").disabled = true;
+  try {
+    await chamar("/despesas/" + alvo.id, { method: "PUT", body: JSON.stringify(corpo) });
+    $("dlgEditar").close();
+    await carregarDespesas();
+    avisar("Gasto atualizado.");
+  } catch (e) {
+    avisar(e.message, "erro");
+  } finally {
+    $("edSalvar").disabled = false;
+  }
+});
+
+$("apCancelar").addEventListener("click", () => $("dlgApagar").close());
+$("apConfirmar").addEventListener("click", async () => {
+  if (!alvo) return;
+  $("apConfirmar").disabled = true;
+  try {
+    await chamar("/despesas/" + alvo.id, { method: "DELETE" });
+    $("dlgApagar").close();
+    await carregarDespesas();
+    avisar("Gasto apagado.");
+  } catch (e) {
+    avisar(e.message, "erro");
+  } finally {
+    $("apConfirmar").disabled = false;
+  }
+});
+
+/* ============ Calculadora ============ */
+const calc = { expr: "", fresh: false, erro: false, fita: [] };
+const fmtNum = (n) => new Intl.NumberFormat("pt-PT", { maximumFractionDigits: 10 }).format(n);
+const mostrarExpr = (e) => e.replace(/\*/g, "×").replace(/\//g, "÷").replace(/-/g, "−").replace(/\./g, ",");
+const temConta = (e) => /.[+\-*/%]/.test(e);
+const semOpFinal = (e) => e.replace(/[+\-*/]+$/, "");
+
+function calcAvaliar(texto) {
+  let i = 0;
+  const peek = () => texto[i];
+  function numero() {
+    const ini = i;
+    while (i < texto.length && /[0-9.]/.test(texto[i])) i++;
+    const n = parseFloat(texto.slice(ini, i));
+    if (i === ini || isNaN(n)) throw new Error("conta");
+    return n;
+  }
+  function fator() {
+    if (peek() === "-") { i++; const f = fator(); return { v: -f.v, pct: false }; }
+    if (peek() === "+") { i++; return fator(); }
+    let v = numero(), pct = false;
+    while (peek() === "%") { i++; v /= 100; pct = true; }
+    return { v, pct };
+  }
+  function termo() {
+    let a = fator();
+    while (peek() === "*" || peek() === "/") {
+      const op = texto[i++], b = fator();
+      a = { v: op === "*" ? a.v * b.v : a.v / b.v, pct: false };
+    }
+    return a;
+  }
+  let v = termo().v;
+  while (peek() === "+" || peek() === "-") {
+    const op = texto[i++], t = termo();
+    const parcela = t.pct ? v * t.v : t.v; // 200 + 10% = 220
+    v = op === "+" ? v + parcela : v - parcela;
+  }
+  if (i !== texto.length || !isFinite(v) || Math.abs(v) >= 1e15) throw new Error("conta");
+  return Number(v.toFixed(10));
+}
+
+function calcTecla(k) {
+  if (calc.erro) { calc.expr = ""; calc.erro = false; }
+  if (k === "C") { calc.expr = ""; calc.fresh = false; }
+  else if (k === "B") { calc.expr = calc.fresh ? "" : calc.expr.slice(0, -1); calc.fresh = false; }
+  else if (/^[0-9]$/.test(k)) {
+    if (calc.fresh) { calc.expr = ""; calc.fresh = false; }
+    if (!/%$/.test(calc.expr)) calc.expr += k;
+  } else if (k === ".") {
+    if (calc.fresh) { calc.expr = ""; calc.fresh = false; }
+    if (!/%$/.test(calc.expr)) {
+      const atual = (calc.expr.match(/[0-9.]*$/) || [""])[0];
+      if (!atual.includes(".")) calc.expr += atual === "" ? "0." : ".";
+    }
+  } else if ("+-*/".includes(k)) {
+    calc.fresh = false;
+    if (calc.expr === "") { if (k === "-") calc.expr = "-"; }
+    else if (/[+\-*/]$/.test(calc.expr)) {
+      if (k === "-" && /[*/]$/.test(calc.expr)) calc.expr += k;
+      else calc.expr = calc.expr.replace(/[+\-*/]+$/, "") + k;
+    } else calc.expr += k;
+  } else if (k === "%") {
+    calc.fresh = false;
+    if (/[0-9]$/.test(calc.expr)) calc.expr += "%";
+  } else if (k === "=") {
+    const limpa = semOpFinal(calc.expr);
+    if (temConta(limpa)) {
+      try {
+        const r = calcAvaliar(limpa);
+        calc.fita.push({ txt: `${mostrarExpr(limpa)} = ${fmtNum(r)}`, val: r.toFixed(10).replace(/\.?0+$/, "") });
+        calc.fita = calc.fita.slice(-3);
+        calc.expr = r.toFixed(10).replace(/\.?0+$/, "");
+        calc.fresh = true;
+      } catch (e) { calc.erro = true; }
+    }
+  }
+  calcDesenhar();
+}
+
+function calcDesenhar() {
+  const limpa = semOpFinal(calc.expr);
+  let res = "0", linha = "";
+  if (calc.erro) res = "Erro";
+  else if (calc.expr === "") res = "0";
+  else if (temConta(limpa)) {
+    linha = mostrarExpr(calc.expr);
+    try { res = fmtNum(calcAvaliar(limpa)); } catch (e) { res = "…"; }
+  } else res = mostrarExpr(calc.expr);
+  $("calcExpr").textContent = linha;
+  $("calcRes").textContent = res;
+  $("calcFita").innerHTML = calc.fita.map((f, i) => `<button type="button" data-fita="${i}">${esc(f.txt)}</button>`).join("");
+}
+
+function calcAbrir() { $("calc").hidden = false; $("btnCalc").setAttribute("aria-expanded", "true"); calcDesenhar(); }
+function calcFechar() { $("calc").hidden = true; $("btnCalc").setAttribute("aria-expanded", "false"); }
+$("btnCalc").addEventListener("click", () => ($("calc").hidden ? calcAbrir() : calcFechar()));
+$("calcFechar").addEventListener("click", calcFechar);
+$("calcTeclas").addEventListener("click", (e) => { const b = e.target.closest("[data-k]"); if (b) calcTecla(b.dataset.k); });
+$("calcFita").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-fita]");
+  if (!b) return;
+  calc.expr = calc.fita[parseInt(b.dataset.fita, 10)].val; calc.fresh = true; calc.erro = false; calcDesenhar();
+});
+
+$("calcUsar").addEventListener("click", () => {
+  let r;
+  try { r = calcAvaliar(semOpFinal(calc.expr) || "0"); } catch (e) { avisar("A conta está incompleta.", "erro"); return; }
+  if (!(r > 0)) { avisar("O resultado precisa ser maior que zero.", "erro"); return; }
+  $("valor").value = String(Math.round(r * 100) / 100);
+  calcFechar();
+  mudarAba("registros");
+  $("valor").scrollIntoView({ block: "center" });
+  $("texto").focus();
+  avisar("Valor preenchido. Agora escreva a descrição.");
+});
+
+document.addEventListener("keydown", (e) => {
+  if ($("calc").hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest && e.target.closest("input, select, textarea, dialog")) return;
+  let k = null;
+  if (/^[0-9]$/.test(e.key)) k = e.key;
+  else if (e.key === "," || e.key === ".") k = ".";
+  else if (e.key.length === 1 && "+-*/%".includes(e.key)) k = e.key;
+  else if (e.key === "x" || e.key === "X") k = "*";
+  else if (e.key === "Enter" || e.key === "=") k = "=";
+  else if (e.key === "Backspace") k = "B";
+  else if (e.key === "c" || e.key === "C") k = "C";
+  else if (e.key === "Escape") { calcFechar(); return; }
+  if (k) { e.preventDefault(); calcTecla(k); }
+});
+
+/* ============ Início ============ */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+  navigator.serviceWorker.register("service-worker.js").catch(() => {});
+}
+iniciar();
 </script>
 </body>
 </html>
