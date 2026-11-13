@@ -101,7 +101,7 @@
 
   /* ---------- Novo gasto ---------- */
   .novo {
-    display: grid; grid-template-columns: 1fr 150px 170px auto; gap: 12px; align-items: end;
+    display: grid; grid-template-columns: 1fr 230px 170px auto; gap: 12px; align-items: end;
     padding: 14px; margin-bottom: 18px;
   }
 
@@ -182,7 +182,7 @@
   .linha-per.cat .trilho i { background: var(--ouro); }
 
   /* ---------- Diálogos ---------- */
-  dialog { border: 0; border-radius: 14px; padding: 20px; width: min(420px, calc(100% - 32px)); color: var(--tinta); }
+  dialog { border: 0; border-radius: 14px; padding: 20px; background: var(--folha); width: min(420px, calc(100% - 32px)); color: var(--tinta); }
   dialog::backdrop { background: rgba(6, 40, 32, .55); }
   dialog h3 { margin-bottom: 14px; font-size: 1.15rem; }
   dialog .campo { margin-bottom: 12px; }
@@ -218,6 +218,76 @@
   .calc-teclas .t-ig { background: var(--ouro); color: #3b2a00; }
   .calc-teclas .t-zero { grid-column: span 2; }
   .calc-usar { width: 100%; margin-top: 10px; background: var(--menta); color: var(--fundo); border: 0; border-radius: 10px; padding: 11px; font-weight: 700; }
+
+  /* ---------- Barra lateral, perfil, configurações ---------- */
+  .avatar { border-radius: 50%; background: var(--verde) center / cover no-repeat; color: #fff; display: grid; place-items: center; font-weight: 700; flex: none; overflow: hidden; }
+  .btn-menu { background: none; border: 2px solid rgba(255,255,255,.55); padding: 0; width: 38px; height: 38px; font-size: 1rem; }
+  .btn-menu:hover { border-color: #fff; }
+  .lateral {
+    position: fixed; z-index: 70; top: 0; left: 0; bottom: 0; width: 268px; max-width: 84vw;
+    background: var(--folha); border-right: 1px solid var(--linha); box-shadow: 6px 0 28px rgba(0,0,0,.18);
+    display: flex; flex-direction: column; padding: calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+    transform: translateX(-105%); transition: transform .22s ease; overflow-y: auto;
+  }
+  .lateral.aberta { transform: none; }
+  .veu { position: fixed; z-index: 65; inset: 0; background: rgba(6,40,32,.5); }
+  .lat-perfil { display: flex; align-items: center; gap: 12px; padding: 4px 6px 16px; border-bottom: 1px solid var(--linha); margin-bottom: 10px; }
+  .lat-perfil .avatar { width: 48px; height: 48px; font-size: 1.2rem; }
+  .lat-perfil strong { display: block; overflow-wrap: anywhere; line-height: 1.2; }
+  .lat-perfil span.sub { color: var(--suave); font-size: .85rem; overflow-wrap: anywhere; }
+  .lat-nav { display: flex; flex-direction: column; gap: 2px; }
+  .lat-nav button { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 12px; color: var(--tinta); font-weight: 600; }
+  .lat-nav button svg { width: 20px; height: 20px; flex: none; color: var(--suave); }
+  .lat-nav button:hover { background: var(--goteira); }
+  .lat-nav button[aria-selected="true"] { background: var(--goteira); color: var(--verde); }
+  .lat-nav button[aria-selected="true"] svg { color: var(--verde); }
+  .lat-fim { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--linha); }
+  .lat-fim button { width: 100%; text-align: left; background: none; border: 0; padding: 12px; border-radius: 8px; font-weight: 600; color: var(--perigo); }
+  .lat-fim button:hover { background: var(--goteira); }
+  @media (min-width: 1100px) {
+    body.logado { padding-left: 268px; }
+    body.logado .lateral { transform: none; box-shadow: none; }
+    body.logado .veu, body.logado .btn-menu { display: none; }
+  }
+  .titulo-pag { font-size: 1.3rem; margin-bottom: 14px; }
+  .pag-conta { max-width: 640px; }
+  .pag-conta .bloco h2 { margin-bottom: 4px; }
+  .pag-conta .bloco p.nota { margin-bottom: 12px; }
+  .pag-conta .campo { margin-bottom: 12px; }
+  .foto-linha { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .foto-linha .avatar { width: 92px; height: 92px; font-size: 2.2rem; }
+  .foto-linha .botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .linha-pref { display: grid; grid-template-columns: 1fr minmax(150px, 220px); gap: 6px 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--linha); }
+  .linha-pref:first-of-type { border-top: 0; }
+  .linha-pref strong { display: block; }
+  .linha-pref small { color: var(--suave); }
+  .linha-pref select { border: 1px solid var(--linha); border-radius: 8px; background: var(--folha); padding: 10px 12px; min-height: 44px; width: 100%; color: var(--tinta); }
+  @media (max-width: 480px) { .linha-pref { grid-template-columns: 1fr; } }
+  .msg-ok { color: var(--verde); min-height: 1.3em; margin-top: 8px; font-size: .9rem; }
+
+  /* ---------- Tema escuro ---------- */
+  [data-tema="escuro"] { color-scheme: dark; --papel: #0d1512; --folha: #15211d; --tinta: #e7f0ec; --suave: #9db1a9; --linha: #2a3a34; --goteira: #1c2b26; }
+  [data-tema="escuro"] .campo input, [data-tema="escuro"] .campo select, [data-tema="escuro"] .barra input,
+  [data-tema="escuro"] .filtros select, [data-tema="escuro"] .filtros input, [data-tema="escuro"] .pag select { background: #0f1a16; }
+  [data-tema="escuro"] .btn-sec, [data-tema="escuro"] .pag button, [data-tema="escuro"] .seg button, [data-tema="escuro"] .btn-mini { background: var(--folha); }
+  [data-tema="escuro"] .btn-sec:hover, [data-tema="escuro"] .btn-mini:hover { background: var(--goteira); }
+  [data-tema="escuro"] a.link, [data-tema="escuro"] .filtros summary, [data-tema="escuro"] .seta,
+  [data-tema="escuro"] .stats .online strong, [data-tema="escuro"] .lat-nav button[aria-selected="true"], [data-tema="escuro"] .msg-ok { color: #5eead4; }
+  [data-tema="escuro"] .abas button[aria-selected="true"] { color: #5eead4; border-bottom-color: #2dd4bf; }
+  [data-tema="escuro"] .tag { background: #173a33; color: #99f6e4; }
+  [data-tema="escuro"] tbody tr:nth-child(even) td:not(.n) { background: #121d19; }
+  [data-tema="escuro"] tbody tr:hover td:not(.n) { background: #1a2b25; }
+  [data-tema="escuro"] thead th .ord:hover { background: #26382f; }
+  [data-tema="escuro"] .lat-nav button[aria-selected="true"] svg { color: #5eead4; }
+  [data-tema="escuro"] .aviso.ok { background: #0f766e; }
+  [data-tema="escuro"] dialog { border: 1px solid var(--linha); }
+
+  /* ---------- Moedas ---------- */
+  .moeda-grupo { display: flex; gap: 6px; }
+  .moeda-grupo input { flex: 1; min-width: 0; }
+  .moeda-grupo select { width: 104px; flex: none; }
+  .orig { display: block; color: var(--suave); font-size: .78rem; font-weight: 400; }
+  .cotacao { font-size: .85rem; color: var(--suave); }
 
   /* ---------- Conta, lixeira e painel ---------- */
   .topo-acoes { display: flex; gap: 8px; }
@@ -270,7 +340,9 @@
     .faixa > div:nth-child(3) { border-left: 0; padding-left: 0; }
     .faixa > div:nth-child(n+3) { border-top: 1px solid rgba(153,246,228,.28); }
     .novo { grid-template-columns: 1fr 1fr; }
-    .novo .c-desc { grid-column: 1 / -1; }
+    .novo .c-desc, .novo .c-valor, .novo .c-data { grid-column: 1 / -1; }
+    .filtros-grid > * { min-width: 0; }
+    .filtros-grid input, .filtros-grid select { min-width: 0; max-width: 100%; }
     .novo button { grid-column: 1 / -1; }
     .filtros-grid { grid-template-columns: 1fr 1fr; }
     .rodape-tabela { justify-content: flex-start; }
@@ -300,6 +372,20 @@
 </head>
 <body>
 
+<div id="veu" class="veu" hidden></div>
+<aside id="menuLateral" class="lateral" aria-label="Menu" hidden>
+  <div class="lat-perfil">
+    <div class="avatar"></div>
+    <div><strong id="latNome"></strong><span class="sub" id="latLogin"></span></div>
+  </div>
+  <nav class="lat-nav">
+    <button type="button" data-aba="registros" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16"/></svg>Meus gastos</button>
+    <button type="button" data-aba="perfil" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Perfil</button>
+    <button type="button" data-aba="config" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg>Configurações</button>
+  </nav>
+  <div class="lat-fim"><button id="btnSair" type="button">Sair</button></div>
+</aside>
+
 <header class="topo">
   <div class="topo-in">
     <div class="topo-linha">
@@ -308,8 +394,7 @@
         <span>Minhas Finanças</span>
       </div>
       <div class="topo-acoes">
-        <button id="btnConta" class="btn-topo" type="button" hidden>Conta</button>
-        <button id="btnSair" class="btn-topo" type="button" hidden>Sair</button>
+        <button id="btnMenu" class="btn-topo btn-menu avatar" type="button" aria-label="Abrir menu" hidden></button>
       </div>
     </div>
     <div id="faixa" class="faixa" hidden>
@@ -352,7 +437,7 @@
 
     <form id="form" class="folha novo" autocomplete="off">
       <label class="campo c-desc">Descrição<input id="texto" required maxlength="120" placeholder="ex: café, metro, supermercado"></label>
-      <label class="campo c-valor">Valor (€)<input id="valor" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00"></label>
+      <label class="campo c-valor">Valor<span class="moeda-grupo"><input id="valor" type="number" step="0.01" min="0.01" inputmode="decimal" required placeholder="0,00"><select id="moeda" aria-label="Moeda"></select></span></label>
       <label class="campo c-data">Data<input id="data" type="date" required></label>
       <button id="btnAdicionar" class="btn-primario">Adicionar gasto</button>
     </form>
@@ -445,6 +530,79 @@
       <div class="folha" id="listaLixeira"></div>
     </section>
 
+
+    <!-- Perfil -->
+    <section id="abaPerfil" class="pag-conta" hidden>
+      <h2 class="titulo-pag">Perfil</h2>
+      <div class="folha bloco">
+        <h2>Foto e nome</h2>
+        <p class="nota">Aparece no menu. A foto fica guardada só na sua conta.</p>
+        <div class="foto-linha">
+          <div class="avatar" id="pfFoto"></div>
+          <div class="botoes">
+            <button type="button" class="btn-sec" id="pfTrocarFoto">Escolher foto</button>
+            <button type="button" class="btn-sec" id="pfRemoverFoto">Remover foto</button>
+            <input type="file" id="pfArquivo" accept="image/*" hidden>
+          </div>
+        </div>
+        <label class="campo">Nome de exibição<input id="pfNome" maxlength="40" placeholder="Como você quer ser chamado" autocomplete="nickname"></label>
+        <label class="campo">Usuário<input id="pfLogin" disabled></label>
+        <label class="campo">Email (opcional)<input id="pfEmail" type="email" maxlength="120" autocomplete="email" placeholder="para recuperar a senha no futuro"></label>
+        <button type="button" class="btn-primario" id="pfSalvar">Salvar perfil</button>
+        <p class="msg-ok" id="pfMsg" aria-live="polite"></p>
+      </div>
+      <div class="folha bloco">
+        <h2>Alterar senha</h2>
+        <p class="nota">Ao trocar, os outros aparelhos conectados saem da conta.</p>
+        <label class="campo">Senha atual<input id="pwAtual" type="password" autocomplete="current-password"></label>
+        <label class="campo">Senha nova<input id="pwNova" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
+        <label class="campo">Repetir senha nova<input id="pwNova2" type="password" autocomplete="new-password"></label>
+        <button type="button" class="btn-primario" id="pwSalvar">Alterar senha</button>
+        <p class="msg-ok" id="pwMsg" aria-live="polite"></p>
+      </div>
+      <div class="folha bloco">
+        <h2>Excluir conta</h2>
+        <p class="nota">Apaga a conta e todos os gastos na hora, inclusive os da lixeira. Não dá para desfazer.</p>
+        <button type="button" class="btn-sec perigo-texto" id="ctExcluir">Excluir minha conta</button>
+      </div>
+    </section>
+
+    <!-- Configurações -->
+    <section id="abaConfig" class="pag-conta" hidden>
+      <h2 class="titulo-pag">Configurações</h2>
+      <div class="folha bloco">
+        <div class="linha-pref">
+          <label for="ctMoeda"><strong>Moeda padrão</strong><small>Totais e resumo aparecem nesta moeda. Outras moedas são convertidas pela cotação do dia. <span id="ctCotacao" class="cotacao"></span></small></label>
+          <select id="ctMoeda"></select>
+        </div>
+        <div class="linha-pref">
+          <label for="ctLixeira"><strong>Lixeira</strong><small>Gastos apagados ficam guardados por esse tempo e depois são removidos de vez. Vale para os próximos apagados.</small></label>
+          <select id="ctLixeira"><option value="1">24 horas</option><option value="7">7 dias</option><option value="30">30 dias</option></select>
+        </div>
+        <div class="linha-pref">
+          <label for="cfTema"><strong>Aparência</strong><small>Automático segue o modo do seu aparelho.</small></label>
+          <select id="cfTema"><option value="auto">Automático</option><option value="claro">Claro</option><option value="escuro">Escuro</option></select>
+        </div>
+        <div class="linha-pref">
+          <label for="cfPorPagina"><strong>Gastos por página</strong><small>Quantas linhas aparecem na tabela.</small></label>
+          <select id="cfPorPagina"><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
+        </div>
+        <div class="linha-pref">
+          <label for="cfAba"><strong>Tela inicial</strong><small>O que abre quando você entra.</small></label>
+          <select id="cfAba"><option value="registros">Registros</option><option value="resumo">Resumo</option></select>
+        </div>
+        <div class="linha-pref">
+          <label for="cfData"><strong>Formato de data</strong></label>
+          <select id="cfData"><option value="dmy">dd/mm/aaaa</option><option value="mdy">mm/dd/aaaa</option><option value="ymd">aaaa-mm-dd</option></select>
+        </div>
+        <div class="linha-pref">
+          <label for="cfSemana"><strong>Semana começa em</strong><small>Muda os totais semanais.</small></label>
+          <select id="cfSemana"><option value="seg">Segunda-feira</option><option value="dom">Domingo</option></select>
+        </div>
+        <p class="msg-ok" id="ctMsg" aria-live="polite"></p>
+      </div>
+    </section>
+
     <!-- Painel (só para admin) -->
     <section id="abaPainel" hidden>
       <div class="stats" id="painelStats"></div>
@@ -477,7 +635,7 @@
   <form id="formEditar" autocomplete="off">
     <h3>Editar gasto</h3>
     <label class="campo">Descrição<input id="edTexto" required maxlength="120"></label>
-    <label class="campo">Valor (€)<input id="edValor" type="number" step="0.01" min="0.01" inputmode="decimal" required></label>
+    <label class="campo">Valor<span class="moeda-grupo"><input id="edValor" type="number" step="0.01" min="0.01" inputmode="decimal" required><select id="edMoeda" aria-label="Moeda"></select></span></label>
     <label class="campo">Data<input id="edData" type="date" required></label>
     <div class="acoes">
       <button type="button" class="btn-sec" id="edCancelar">Cancelar</button>
@@ -496,24 +654,7 @@
   </div>
 </dialog>
 
-<!-- Minha conta -->
-<dialog id="dlgConta">
-  <h3>Minha conta</h3>
-  <p id="ctInfo"></p>
-  <hr class="sep">
-  <label class="campo">Lixeira: apagar de vez depois de
-    <select id="ctLixeira">
-      <option value="1">24 horas</option>
-      <option value="7">7 dias</option>
-      <option value="30">30 dias</option>
-    </select>
-    <small>Os gastos que você apagar ficam na lixeira por esse tempo e podem ser restaurados. Depois são removidos de vez. A mudança vale para os próximos gastos apagados.</small>
-  </label>
-  <p id="ctMsg" class="nota" aria-live="polite"></p>
-  <hr class="sep">
-  <button type="button" class="btn-sec perigo-texto" id="ctExcluir">Excluir minha conta</button>
-  <div class="acoes"><button type="button" class="btn-primario" id="ctFechar">Fechar</button></div>
-</dialog>
+
 
 <!-- Excluir conta -->
 <dialog id="dlgExcluir">
@@ -572,7 +713,13 @@
 const API_URL = "https://finan-as-pessoais-ia.onrender.com";
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
-const eur = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" });
+const NOMES_MOEDA = { EUR: "€ EUR", BRL: "R$ BRL", USD: "US$ USD", GBP: "£ GBP" };
+const _fmts = {};
+function fmtMoeda(v, moeda) {
+  const f = _fmts[moeda] || (_fmts[moeda] = new Intl.NumberFormat("pt-PT", { style: "currency", currency: moeda }));
+  return f.format(v);
+}
+const eur = { format: (v) => fmtMoeda(v, estado.moeda) };  // formata na moeda padrão do usuário
 const semAcento = (t) => String(t).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const esc = (t) => String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const chaveDia = (dt) => `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
@@ -585,35 +732,56 @@ const estado = {
   ord: { campo: "data", dir: "desc" },
   pagina: 1, porPagina: 25, agrupar: "mes", aba: "registros",
   eu: null, lixeira: [],
+  prefs: { tema: "auto", por_pagina: 25, aba_inicial: "registros", formato_data: "dmy", semana_inicio: "seg" },
+  moeda: "EUR", moedas: ["EUR", "BRL", "USD", "GBP"], taxas: { EUR: 1 }, brutas: [],
 };
 
 /* ============ Datas ============ */
 function infoSemana(dt) {
-  const base = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+  const dom = estado.prefs.semana_inicio === "dom";  // semana de domingo a sábado
+  const base = new Date(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate() + (dom ? 1 : 0)));
   const diaSem = (base.getUTCDay() + 6) % 7; // segunda = 0
   const segunda = new Date(base); segunda.setUTCDate(base.getUTCDate() - diaSem);
   const domingo = new Date(segunda); domingo.setUTCDate(segunda.getUTCDate() + 6);
   const quinta = new Date(segunda); quinta.setUTCDate(segunda.getUTCDate() + 3);
   const ano = quinta.getUTCFullYear();
   const numero = Math.floor((quinta - new Date(Date.UTC(ano, 0, 1))) / 86400000 / 7) + 1;
+  if (dom) { segunda.setUTCDate(segunda.getUTCDate() - 1); domingo.setUTCDate(domingo.getUTCDate() - 1); }
   return { ano, numero, segunda, domingo };
 }
-const diaMesUTC = (d) => `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}`;
+function diaMesUTC(d) {
+  const dia = pad(d.getUTCDate()), mes = pad(d.getUTCMonth() + 1);
+  const f = estado.prefs.formato_data;
+  return f === "mdy" ? `${mes}/${dia}` : f === "ymd" ? `${mes}-${dia}` : `${dia}/${mes}`;
+}
+
+function converter(valor, de) {
+  const t = estado.taxas;
+  if (de === estado.moeda || !t[de] || !t[estado.moeda]) return valor;
+  return valor / t[de] * t[estado.moeda];
+}
 
 function normalizar(d) {
+  const moeda = d.moeda || "EUR";
+  const valorOrig = d.valor;
+  d = { ...d, valor: converter(d.valor, moeda) };  // daqui em diante, valor = na moeda padrão
   const dt = new Date(d.data_hora.replace(/(\.\d{3})\d+/, "$1") + "Z");
   const sem = infoSemana(dt);
   const meioDia = dt.getUTCHours() === 12 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0;
   return {
-    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor,
+    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor, valorOrig, moeda,
     dt, ts: dt.getTime(), semHora: meioDia,
     dia: chaveDia(dt), mes: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`, ano: String(dt.getFullYear()),
     semana: `${sem.ano}-S${pad(sem.numero)}`, sem,
-    busca: semAcento(`${d.descricao} ${d.categoria} ${d.valor.toFixed(2)} ${d.valor.toFixed(2).replace(".", ",")}`),
+    busca: semAcento(`${d.descricao} ${d.categoria} ${valorOrig.toFixed(2)} ${valorOrig.toFixed(2).replace(".", ",")} ${d.valor.toFixed(2)} ${d.valor.toFixed(2).replace(".", ",")} ${moeda}`),
   };
 }
 const diaSemanaCurto = (dt) => ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][dt.getDay()];
-const fmtData = (dt) => `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+function fmtData(dt) {
+  const d = pad(dt.getDate()), m = pad(dt.getMonth() + 1), a = dt.getFullYear();
+  const f = estado.prefs.formato_data;
+  return f === "mdy" ? `${m}/${d}/${a}` : f === "ymd" ? `${a}-${m}-${d}` : `${d}/${m}/${a}`;
+}
 const fmtHora = (dt) => `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
 
 /* ============ Avisos ============ */
@@ -657,8 +825,10 @@ function mostrarTela(nome) {
   $("telaCadastro").hidden = nome !== "cadastro";
   $("telaApp").hidden = nome !== "app";
   const logado = nome === "app";
-  $("btnSair").hidden = !logado;
-  $("btnConta").hidden = !logado;
+  $("btnMenu").hidden = !logado;
+  $("menuLateral").hidden = !logado;
+  document.body.classList.toggle("logado", logado);
+  if (!logado) fecharMenu();
   $("faixa").hidden = !logado;
   $("btnCalc").hidden = !logado;
   if (!logado) calcFechar();
@@ -682,7 +852,9 @@ function iniciar() {
 function sair() {
   localStorage.removeItem("token");
   estado.despesas = [];
-  estado.eu = null; estado.lixeira = [];
+  estado.eu = null; estado.lixeira = []; estado.brutas = [];
+  Object.assign(estado.prefs, { por_pagina: 25, aba_inicial: "registros", formato_data: "dmy", semana_inicio: "seg" });
+  estado.porPagina = 25; $("porPagina").value = "25";
   pararPainel();
   $("tabPainel").hidden = true;
   $("contLixeira").hidden = true;
@@ -718,8 +890,8 @@ $("btnSair").addEventListener("click", sair);
 async function carregarDespesas() {
   estado.carregando = true; desenhar();
   try {
-    const lista = await chamar("/despesas");
-    estado.despesas = lista.map(normalizar);
+    estado.brutas = await chamar("/despesas");
+    estado.despesas = estado.brutas.map(normalizar);
   } catch (e) {
     avisar(e.message, "erro");
   }
@@ -821,7 +993,7 @@ function desenharTabela() {
         <td class="col-data"><span class="d1">${fmtData(d.dt)}</span><span class="d2">${diaSemanaCurto(d.dt)} · sem ${d.sem.numero}${hora}</span></td>
         <td class="col-desc">${esc(d.descricao)}<br><span class="tag tag-sm">${esc(d.categoria)}</span></td>
         <td class="col-cat"><span class="tag">${esc(d.categoria)}</span></td>
-        <td class="v">${eur.format(d.valor)}</td>
+        <td class="v">${eur.format(d.valor)}${d.moeda !== estado.moeda ? `<span class="orig">${fmtMoeda(d.valorOrig, d.moeda)}</span>` : ""}</td>
         <td class="ac">
           <button class="ico" type="button" data-acao="editar" data-id="${d.id}" aria-label="Editar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
           <button class="ico apagar" type="button" data-acao="apagar" data-id="${d.id}" aria-label="Apagar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>
@@ -900,7 +1072,11 @@ function mudarAba(aba) {
   $("abaResumo").hidden = aba !== "resumo";
   $("abaLixeira").hidden = aba !== "lixeira";
   $("abaPainel").hidden = aba !== "painel";
-  $("form").hidden = aba === "lixeira" || aba === "painel";
+  $("abaPerfil").hidden = aba !== "perfil";
+  $("abaConfig").hidden = aba !== "config";
+  $("form").hidden = ["lixeira", "painel", "perfil", "config"].includes(aba);
+  fecharMenu();
+  window.scrollTo(0, 0);
   document.querySelectorAll("[data-aba]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.aba === aba)));
   desenharResumo();
   if (aba === "lixeira") carregarLixeira();
@@ -945,13 +1121,14 @@ $("form").addEventListener("submit", async (ev) => {
   const valor = parseFloat($("valor").value);
   if (!texto) { avisar("Escreva uma descrição.", "erro"); return; }
   if (isNaN(valor) || valor <= 0) { avisar("Informe um valor maior que zero.", "erro"); return; }
-  const corpo = { texto, valor };
+  const corpo = { texto, valor, moeda: $("moeda").value };
   if ($("data").value && $("data").value !== chaveDia(new Date())) corpo.data = $("data").value;
   const botao = $("btnAdicionar");
   botao.disabled = true; botao.textContent = "A classificar…";
   try {
     await chamar("/despesas", { method: "POST", body: JSON.stringify(corpo) });
     $("form").reset();
+    $("moeda").value = estado.moeda;
     $("data").value = chaveDia(new Date());
     estado.pagina = 1;
     await carregarDespesas();
@@ -972,7 +1149,8 @@ $("corpo").addEventListener("click", (ev) => {
   if (!alvo) return;
   if (b.dataset.acao === "editar") {
     $("edTexto").value = alvo.descricao;
-    $("edValor").value = alvo.valor;
+    $("edValor").value = alvo.valorOrig;
+    $("edMoeda").value = alvo.moeda;
     $("edData").value = alvo.dia;
     $("dlgEditar").showModal();
   } else {
@@ -987,7 +1165,7 @@ $("formEditar").addEventListener("submit", async (ev) => {
   const texto = $("edTexto").value.trim();
   const valor = parseFloat($("edValor").value);
   if (!texto || isNaN(valor) || valor <= 0) { avisar("Confira a descrição e o valor.", "erro"); return; }
-  const corpo = { texto, valor };
+  const corpo = { texto, valor, moeda: $("edMoeda").value };
   if ($("edData").value && $("edData").value !== alvo.dia) corpo.data = $("edData").value;
   $("edSalvar").disabled = true;
   try {
@@ -1055,7 +1233,7 @@ async function restaurar(id) {
 async function carregarLixeira() {
   try {
     const lista = await chamar("/lixeira");
-    estado.lixeira = lista.map((d) => ({ ...normalizar(d), expira: parseUTC(d.expira_em) }));
+    estado.lixeira = lista.map((d) => ({ ...normalizar(d), bruto: d, expira: parseUTC(d.expira_em) }));
   } catch (e) {
     return;
   }
@@ -1118,21 +1296,175 @@ async function carregarEu() {
     estado.eu = await chamar("/me");
   } catch (e) { return; }
   $("tabPainel").hidden = !estado.eu.is_admin;
-  desenharLixeira();
+  estado.moeda = estado.eu.moeda || "EUR";
+  if (estado.eu.moedas) estado.moedas = estado.eu.moedas;
+  preencherMoedas();
+  const primeira = !estado.prefsCarregadas;
+  Object.assign(estado.prefs, estado.eu.preferencias || {});
+  estado.prefsCarregadas = true;
+  estado.porPagina = estado.prefs.por_pagina;
+  $("porPagina").value = String(estado.porPagina);
+  aplicarTema();
+  desenharConta();
+  reaplicarMoeda();
+  if (primeira && estado.aba === "registros" && estado.prefs.aba_inicial === "resumo") mudarAba("resumo");
+  await carregarCotacoes();
+  reaplicarMoeda();
+  desenharConta();
 }
 
-function abrirConta() {
-  const eu = estado.eu;
-  $("ctInfo").innerHTML = eu
-    ? `Usuário: <strong>${esc(eu.login)}</strong>${eu.email ? `<br>Email: ${esc(eu.email)}` : ""}`
-    : "";
-  $("ctLixeira").value = String(eu ? eu.lixeira_dias : 7);
-  $("ctMsg").textContent = "";
-  $("dlgConta").showModal();
+function preencherMoedas() {
+  const opcoes = estado.moedas.map((m) => `<option value="${m}">${NOMES_MOEDA[m] || m}</option>`).join("");
+  ["moeda", "edMoeda", "ctMoeda"].forEach((id) => { $(id).innerHTML = opcoes; });
+  $("moeda").value = estado.moeda;
 }
-$("btnConta").addEventListener("click", abrirConta);
-$("btnAjustarPrazo").addEventListener("click", abrirConta);
-$("ctFechar").addEventListener("click", () => $("dlgConta").close());
+
+async function carregarCotacoes() {
+  try {
+    const c = await chamar("/cotacoes");
+    estado.taxas = c.taxas; estado.dataCotacao = c.data;
+  } catch (e) {
+    avisar("Sem cotações agora: gastos em outras moedas aparecem sem conversão.", "erro");
+  }
+}
+
+function reaplicarMoeda() {
+  estado.despesas = estado.brutas.map(normalizar);
+  estado.lixeira = estado.lixeira.map((d) => ({ ...normalizar(d.bruto), bruto: d.bruto, expira: d.expira }));
+  $("moeda").value = estado.moeda;
+  $("ctMoeda").value = estado.moeda;
+  estado.pagina = 1;
+  desenhar(); desenharLixeira();
+}
+
+/* ----- tema ----- */
+const escuroDoSistema = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function aplicarTema() {
+  const t = estado.prefs.tema;
+  const escuro = t === "escuro" || (t === "auto" && escuroDoSistema && escuroDoSistema.matches);
+  document.documentElement.dataset.tema = escuro ? "escuro" : "claro";
+  try { localStorage.setItem("tema", t); } catch (e) { /* ignora */ }
+}
+if (escuroDoSistema) escuroDoSistema.addEventListener("change", () => { if (estado.prefs.tema === "auto") aplicarTema(); });
+try { const t = localStorage.getItem("tema"); if (t) estado.prefs.tema = t; } catch (e) { /* ignora */ }
+aplicarTema();
+
+/* ----- menu lateral ----- */
+function abrirMenu() { $("menuLateral").classList.add("aberta"); $("veu").hidden = false; }
+function fecharMenu() { $("menuLateral").classList.remove("aberta"); $("veu").hidden = true; }
+$("btnMenu").addEventListener("click", abrirMenu);
+$("veu").addEventListener("click", fecharMenu);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") fecharMenu(); });
+
+/* ----- avatar, perfil e configurações ----- */
+const nomeExibido = () => (estado.eu && (estado.eu.nome || estado.eu.login)) || "";
+function pintarAvatares() {
+  const foto = estado.eu && estado.eu.foto;
+  const ini = (nomeExibido().trim()[0] || "?").toUpperCase();
+  document.querySelectorAll(".avatar").forEach((el) => {
+    el.style.backgroundImage = foto ? `url("${foto}")` : "";
+    el.textContent = foto ? "" : ini;
+  });
+}
+function desenharConta() {
+  const eu = estado.eu; if (!eu) return;
+  pintarAvatares();
+  $("latNome").textContent = nomeExibido();
+  $("latLogin").textContent = "@" + eu.login;
+  $("pfNome").value = eu.nome || "";
+  $("pfLogin").value = eu.login;
+  $("pfEmail").value = eu.email || "";
+  $("ctLixeira").value = String(eu.lixeira_dias);
+  $("ctMoeda").value = estado.moeda;
+  $("cfTema").value = estado.prefs.tema;
+  $("cfPorPagina").value = String(estado.prefs.por_pagina);
+  $("cfAba").value = estado.prefs.aba_inicial;
+  $("cfData").value = estado.prefs.formato_data;
+  $("cfSemana").value = estado.prefs.semana_inicio;
+  $("ctCotacao").textContent = estado.dataCotacao ? `Cotação de ${fmtDataIso(estado.dataCotacao)}.` : "";
+}
+const fmtDataIso = (iso) => { const [a, m, d] = iso.split("-"); return fmtData(new Date(+a, +m - 1, +d)); };
+$("btnAjustarPrazo").addEventListener("click", () => mudarAba("config"));
+
+async function salvarPref(chave, valor) {
+  const antes = estado.prefs[chave];
+  estado.prefs[chave] = valor;
+  try {
+    await chamar("/me/preferencias", { method: "PUT", body: JSON.stringify({ [chave]: valor }) });
+    $("ctMsg").textContent = "Salvo.";
+    if (chave === "tema") aplicarTema();
+    if (chave === "por_pagina") { estado.porPagina = valor; $("porPagina").value = String(valor); estado.pagina = 1; desenharTabela(); }
+    if (chave === "formato_data" || chave === "semana_inicio") reaplicarMoeda();
+    desenharConta();
+  } catch (err) {
+    estado.prefs[chave] = antes;
+    $("ctMsg").textContent = err.message;
+    desenharConta();
+  }
+}
+$("cfTema").addEventListener("change", (e) => salvarPref("tema", e.target.value));
+$("cfPorPagina").addEventListener("change", (e) => salvarPref("por_pagina", parseInt(e.target.value, 10)));
+$("cfAba").addEventListener("change", (e) => salvarPref("aba_inicial", e.target.value));
+$("cfData").addEventListener("change", (e) => salvarPref("formato_data", e.target.value));
+$("cfSemana").addEventListener("change", (e) => salvarPref("semana_inicio", e.target.value));
+
+$("pfSalvar").addEventListener("click", async () => {
+  $("pfSalvar").disabled = true; $("pfMsg").textContent = "";
+  try {
+    const r = await chamar("/me/perfil", { method: "PUT", body: JSON.stringify({ nome: $("pfNome").value, email: $("pfEmail").value }) });
+    estado.eu.nome = r.nome; estado.eu.email = r.email;
+    desenharConta();
+    $("pfMsg").textContent = "Perfil salvo.";
+  } catch (e) { $("pfMsg").textContent = e.message; }
+  finally { $("pfSalvar").disabled = false; }
+});
+
+function lerFoto(arquivo) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(arquivo);
+    const img = new Image();
+    img.onload = () => {
+      const lado = 256, c = document.createElement("canvas");
+      c.width = c.height = lado;
+      const corte = Math.min(img.width, img.height);
+      c.getContext("2d").drawImage(img, (img.width - corte) / 2, (img.height - corte) / 2, corte, corte, 0, 0, lado, lado);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Não foi possível ler esta imagem.")); };
+    img.src = url;
+  });
+}
+async function enviarFoto(foto) {
+  await chamar("/me/foto", { method: "PUT", body: JSON.stringify({ foto }) });
+  estado.eu.foto = foto;
+  pintarAvatares();
+}
+$("pfTrocarFoto").addEventListener("click", () => $("pfArquivo").click());
+$("pfArquivo").addEventListener("change", async (e) => {
+  const arq = e.target.files[0]; e.target.value = "";
+  if (!arq) return;
+  try { await enviarFoto(await lerFoto(arq)); $("pfMsg").textContent = "Foto atualizada."; }
+  catch (err) { $("pfMsg").textContent = err.message; }
+});
+$("pfRemoverFoto").addEventListener("click", async () => {
+  try { await enviarFoto(null); $("pfMsg").textContent = "Foto removida."; }
+  catch (err) { $("pfMsg").textContent = err.message; }
+});
+
+$("pwSalvar").addEventListener("click", async () => {
+  const m = $("pwMsg"); m.textContent = "";
+  if ($("pwNova").value !== $("pwNova2").value) { m.textContent = "As senhas novas não coincidem."; return; }
+  $("pwSalvar").disabled = true;
+  try {
+    const r = await chamar("/me/senha", { method: "POST", body: JSON.stringify({ atual: $("pwAtual").value, nova: $("pwNova").value }) });
+    localStorage.setItem("token", r.token);
+    $("pwAtual").value = $("pwNova").value = $("pwNova2").value = "";
+    m.textContent = "Senha alterada.";
+  } catch (e) { m.textContent = e.message; }
+  finally { $("pwSalvar").disabled = false; }
+});
+
 $("ctLixeira").addEventListener("change", async (e) => {
   const dias = parseInt(e.target.value, 10);
   try {
@@ -1144,8 +1476,19 @@ $("ctLixeira").addEventListener("change", async (e) => {
     $("ctMsg").textContent = err.message;
   }
 });
+$("ctMoeda").addEventListener("change", async (e) => {
+  const moeda = e.target.value;
+  try {
+    await chamar("/me/moeda", { method: "PUT", body: JSON.stringify({ moeda }) });
+    estado.moeda = moeda; if (estado.eu) estado.eu.moeda = moeda;
+    reaplicarMoeda();
+    $("ctMsg").textContent = `Salvo: moeda padrão ${NOMES_MOEDA[moeda] || moeda}.`;
+  } catch (err) {
+    $("ctMsg").textContent = err.message;
+    e.target.value = estado.moeda;
+  }
+});
 $("ctExcluir").addEventListener("click", () => {
-  $("dlgConta").close();
   $("exSenha").value = ""; $("exErro").textContent = "";
   $("dlgExcluir").showModal();
 });
@@ -1236,7 +1579,7 @@ $("painelUsuarios").addEventListener("click", async (ev) => {
     $("usTitulo").textContent = `Registros de ${r.login} (${plural(r.despesas.length)})`;
     const linhas = r.despesas.map(normalizar).sort((a, c) => c.ts - a.ts);
     $("usCorpo").innerHTML = linhas.map((d) =>
-      `<tr><td>${fmtData(d.dt)}</td><td class="quebra">${esc(d.descricao)}</td><td class="oc-mob">${esc(d.categoria)}</td><td class="v">${eur.format(d.valor)}</td></tr>`
+      `<tr><td>${fmtData(d.dt)}</td><td class="quebra">${esc(d.descricao)}</td><td class="oc-mob">${esc(d.categoria)}</td><td class="v">${fmtMoeda(d.valorOrig, d.moeda)}</td></tr>`
     ).join("") || `<tr><td colspan="4" class="vazio">Sem gastos.</td></tr>`;
     $("dlgUsuario").showModal();
     carregarPainel(); // atualiza o registro de consultas

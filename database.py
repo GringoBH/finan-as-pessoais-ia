@@ -39,6 +39,10 @@ class RepositorioDespesas:
             novas_u = {
                 "is_admin": "BOOLEAN NOT NULL DEFAULT FALSE",
                 "lixeira_dias": "INTEGER NOT NULL DEFAULT 7",
+                "moeda": "VARCHAR NOT NULL DEFAULT 'EUR'",
+                "nome": "VARCHAR",
+                "foto": "TEXT",
+                "preferencias": "TEXT",
                 "criado_em": tipo_data,
                 "ultimo_acesso": tipo_data,
             }
@@ -49,6 +53,8 @@ class RepositorioDespesas:
             for nome in ("apagado_em", "expira_em"):
                 if nome not in colunas_d:
                     conn.execute(text(f"ALTER TABLE despesas2 ADD COLUMN {nome} {tipo_data}"))
+            if "moeda" not in colunas_d:
+                conn.execute(text("ALTER TABLE despesas2 ADD COLUMN moeda VARCHAR NOT NULL DEFAULT 'EUR'"))
             if self.engine.dialect.name == "postgresql":
                 conn.execute(text("ALTER TABLE usuarios ALTER COLUMN email DROP NOT NULL"))
 
@@ -75,7 +81,7 @@ class RepositorioDespesas:
                     .first())
 
     def atualizar_despesa(self, despesa_id: int, usuario_id: int, descricao: str,
-                          valor: float, categoria: str, data_hora=None) -> bool:
+                          valor: float, categoria: str, data_hora=None, moeda: str | None = None) -> bool:
         with self.Session() as session:
             despesa = (session.query(Despesa)
                        .filter(Despesa.id == despesa_id, Despesa.usuario_id == usuario_id,
@@ -88,6 +94,8 @@ class RepositorioDespesas:
             despesa.categoria = categoria
             if data_hora is not None:
                 despesa.data_hora = data_hora
+            if moeda:
+                despesa.moeda = moeda
             session.commit()
             return True
 
@@ -195,6 +203,38 @@ class RepositorioDespesas:
         with self.Session() as session:
             usuario = session.get(Usuario, usuario_id)
             usuario.lixeira_dias = dias
+            session.commit()
+
+    def atualizar_perfil(self, usuario_id: int, nome: str | None, email: str | None) -> None:
+        with self.Session() as session:
+            usuario = session.get(Usuario, usuario_id)
+            usuario.nome = nome
+            usuario.email = email
+            session.commit()
+
+    def definir_foto(self, usuario_id: int, foto: str | None) -> None:
+        with self.Session() as session:
+            usuario = session.get(Usuario, usuario_id)
+            usuario.foto = foto
+            session.commit()
+
+    def definir_preferencias(self, usuario_id: int, texto_json: str) -> None:
+        with self.Session() as session:
+            usuario = session.get(Usuario, usuario_id)
+            usuario.preferencias = texto_json
+            session.commit()
+
+    def definir_senha(self, usuario_id: int, senha_hash: str, token: str) -> None:
+        with self.Session() as session:
+            usuario = session.get(Usuario, usuario_id)
+            usuario.senha_hash = senha_hash
+            usuario.token = token  # novo token: encerra as outras sessões
+            session.commit()
+
+    def definir_moeda(self, usuario_id: int, moeda: str) -> None:
+        with self.Session() as session:
+            usuario = session.get(Usuario, usuario_id)
+            usuario.moeda = moeda
             session.commit()
 
     def definir_admin(self, usuario_id: int) -> None:
