@@ -4,12 +4,13 @@ import secrets
 import json
 import time
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import RepositorioDespesas
-from models import Despesa, Usuario
+from models import Despesa, Usuario, Recorrente
+from recorrencia import FREQUENCIAS, proxima_data
 from ia import ClassificadorIA, CATEGORIAS, categoria_valida
 
 app = FastAPI()
@@ -63,6 +64,19 @@ class RegistroEntrada(BaseModel):
 
 class LixeiraConfig(BaseModel):
     dias: int
+
+class RecorrenteEntrada(BaseModel):
+    texto: str
+    valor: float
+    frequencia: str                 # semanal, mensal ou anual
+    moeda: str | None = None
+    categoria: str | None = None    # vazio = a IA escolhe
+    inicio: str | None = None       # "AAAA-MM-DD": primeira cobrança (vazio = hoje)
+    ativo: bool | None = None
+
+class OrcamentoEntrada(BaseModel):
+    categoria: str
+    limite: float | None = None     # vazio ou 0 remove o orçamento
 
 class MoedaConfig(BaseModel):
     moeda: str
@@ -408,6 +422,7 @@ def criar_despesa(entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_lo
 
 @app.get("/despesas")
 def listar_despesas(usuario: Usuario = Depends(usuario_logado)):
+    repo.lancar_recorrentes(usuario.id, datetime.utcnow().date())  # gastos fixos que venceram
     return [despesa_para_dict(d) for d in repo.listar(usuario.id)]
 
 @app.put("/despesas/{despesa_id}")
@@ -434,6 +449,95 @@ def mover_para_lixeira(despesa_id: int, usuario: Usuario = Depends(usuario_logad
     if expira is None:
         raise HTTPException(status_code=404, detail="Despesa não encontrada")
     return {"ok": True, "expira_em": iso(expira)}
+
+
+# ----------------------------------------------------------------------
+# Gastos fixos (recorrentes)
+# ----------------------------------------------------------------------
+def recorrente_para_dict(r: Recorrente) -> dict:
+    return {"id": r.id, "descricao": r.descricao, "valor": r.valor, "moeda": r.moeda,
+            "categoria": r.categoria, "frequencia": r.frequencia,
+            "proxima": r.proxima.isoformat(), "ativo": bool(r.ativo)}
+
+def data_do_dia(texto: str | None) -> date | None:
+    if not texto:
+        return None
+    try:
+        return datetime.strptime(texto, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Data inválida")
+
+def validar_recorrente(e: RecorrenteEntrada) -> None:
+    validar_despesa(DespesaEntrada(texto=e.texto, valor=e.valor))
+    e.texto = e.texto.strip()
+    if e.frequencia not in FREQUENCIAS:
+        raise HTTPException(status_code=400, detail="Frequência inválida")
+
+@app.get("/recorrentes")
+def listar_recorrentes(usuario: Usuario = Depends(usuario_logado)):
+    return [recorrente_para_dict(r) for r in repo.listar_recorrentes(usuario.id)]
+
+@app.post("/recorrentes")
+def criar_recorrente(e: RecorrenteEntrada, usuario: Usuario = Depends(usuario_logado)):
+    validar_recorrente(e)
+    hoje = datetime.utcnow().date()
+    inicio = data_do_dia(e.inicio) or hoje
+    if inicio < hoje - timedelta(days=366):
+        raise HTTPException(status_code=400, detail="A primeira cobrança não pode ser de mais de 1 ano atrás")
+    if inicio > hoje + timedelta(days=366 * 2):
+        raise HTTPException(status_code=400, detail="Data de início muito distante")
+    categoria = categoria_valida(e.categoria) or ia.classificar(e.texto)
+    repo.salvar(Recorrente(usuario_id=usuario.id, descricao=e.texto, valor=e.valor,
+                           moeda=moeda_valida(e.moeda, usuario.moeda), categoria=categoria,
+                           frequencia=e.frequencia, dia_base=inicio.day, proxima=inicio, ativo=True))
+    repo.lancar_recorrentes(usuario.id, hoje)  # se começa hoje (ou antes), lança já
+    return {"ok": True}
+
+@app.put("/recorrentes/{rec_id}")
+def editar_recorrente(rec_id: int, e: RecorrenteEntrada, usuario: Usuario = Depends(usuario_logado)):
+    validar_recorrente(e)
+    atual = repo.buscar_recorrente(rec_id, usuario.id)
+    if not atual:
+        raise HTTPException(status_code=404, detail="Gasto fixo não encontrado")
+    campos = {"descricao": e.texto, "valor": e.valor, "frequencia": e.frequencia,
+              "moeda": moeda_valida(e.moeda, atual.moeda),
+              "categoria": categoria_valida(e.categoria)
+              or (atual.categoria if e.texto == atual.descricao else ia.classificar(e.texto))}
+    if e.ativo is not None:
+        campos["ativo"] = e.ativo
+    inicio = data_do_dia(e.inicio)
+    if inicio:  # nova data da próxima cobrança
+        campos["proxima"] = inicio
+        campos["dia_base"] = inicio.day
+    repo.atualizar_recorrente(rec_id, usuario.id, **campos)
+    repo.lancar_recorrentes(usuario.id, datetime.utcnow().date())
+    return {"ok": True}
+
+@app.delete("/recorrentes/{rec_id}")
+def apagar_recorrente(rec_id: int, usuario: Usuario = Depends(usuario_logado)):
+    """Para de lançar. Os gastos já lançados continuam nos registros."""
+    if not repo.apagar_recorrente(rec_id, usuario.id):
+        raise HTTPException(status_code=404, detail="Gasto fixo não encontrado")
+    return {"ok": True}
+
+
+# ----------------------------------------------------------------------
+# Orçamentos por categoria
+# ----------------------------------------------------------------------
+@app.get("/orcamentos")
+def listar_orcamentos(usuario: Usuario = Depends(usuario_logado)):
+    return [{"categoria": o.categoria, "limite": o.limite, "moeda": o.moeda}
+            for o in repo.listar_orcamentos(usuario.id)]
+
+@app.put("/orcamentos")
+def definir_orcamento(o: OrcamentoEntrada, usuario: Usuario = Depends(usuario_logado)):
+    categoria = o.categoria.strip()
+    if not categoria or len(categoria) > 40:
+        raise HTTPException(status_code=400, detail="Categoria inválida")
+    if o.limite is not None and not (0 <= o.limite < 1_000_000_000):
+        raise HTTPException(status_code=400, detail="Limite inválido")
+    repo.definir_orcamento(usuario.id, categoria, o.limite, usuario.moeda or "EUR")
+    return {"ok": True}
 
 
 # ----------------------------------------------------------------------

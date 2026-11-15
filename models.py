@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, Date, ForeignKey, Boolean, UniqueConstraint
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
@@ -43,3 +43,31 @@ class LogAdmin(Base):
     alvo_login = Column(String, nullable=False)
     acao = Column(String, nullable=False)
     quando = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+class Recorrente(Base):
+    """Gasto fixo: o app lança uma despesa sozinho a cada período."""
+    __tablename__ = "recorrentes"
+
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    descricao = Column(String, nullable=False)
+    valor = Column(Float, nullable=False)
+    moeda = Column(String, nullable=False, default="EUR")
+    categoria = Column(String, nullable=False)
+    frequencia = Column(String, nullable=False)   # semanal, mensal ou anual
+    dia_base = Column(Integer, nullable=False)    # dia do mês original (para meses curtos)
+    proxima = Column(Date, nullable=False)        # próxima cobrança a lançar
+    ativo = Column(Boolean, nullable=False, default=True)
+    criado_em = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+class Orcamento(Base):
+    """Limite mensal de gastos de uma categoria."""
+    __tablename__ = "orcamentos"
+    __table_args__ = (UniqueConstraint("usuario_id", "categoria", name="uq_orcamento_usuario_categoria"),)
+
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    categoria = Column(String, nullable=False)
+    limite = Column(Float, nullable=False)
+    moeda = Column(String, nullable=False, default="EUR")  # moeda em que o limite foi definido

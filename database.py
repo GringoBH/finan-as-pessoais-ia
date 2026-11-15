@@ -1,9 +1,10 @@
 import os
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect, text, func
 from sqlalchemy.orm import sessionmaker
-from models import Base, Despesa, Usuario, LogAdmin
+from models import Base, Despesa, Usuario, LogAdmin, Recorrente, Orcamento
+from recorrencia import proxima_data
 
 load_dotenv()
 
@@ -98,6 +99,81 @@ class RepositorioDespesas:
                 despesa.moeda = moeda
             session.commit()
             return True
+
+    # ------------------------------------------------------------------
+    # Gastos fixos (recorrentes)
+    # ------------------------------------------------------------------
+    def listar_recorrentes(self, usuario_id: int) -> list[Recorrente]:
+        with self.Session() as session:
+            return (session.query(Recorrente).filter(Recorrente.usuario_id == usuario_id)
+                    .order_by(Recorrente.descricao).all())
+
+    def buscar_recorrente(self, rec_id: int, usuario_id: int):
+        with self.Session() as session:
+            return (session.query(Recorrente)
+                    .filter(Recorrente.id == rec_id, Recorrente.usuario_id == usuario_id).first())
+
+    def atualizar_recorrente(self, rec_id: int, usuario_id: int, **campos) -> bool:
+        with self.Session() as session:
+            rec = (session.query(Recorrente)
+                   .filter(Recorrente.id == rec_id, Recorrente.usuario_id == usuario_id).first())
+            if not rec:
+                return False
+            for nome, valor in campos.items():
+                setattr(rec, nome, valor)
+            session.commit()
+            return True
+
+    def apagar_recorrente(self, rec_id: int, usuario_id: int) -> bool:
+        with self.Session() as session:
+            n = (session.query(Recorrente)
+                 .filter(Recorrente.id == rec_id, Recorrente.usuario_id == usuario_id)
+                 .delete(synchronize_session=False))
+            session.commit()
+            return n > 0
+
+    def lancar_recorrentes(self, usuario_id: int, hoje: date) -> int:
+        """Cria os gastos que já venceram (inclusive atrasados) e avança a próxima data. Devolve quantos criou."""
+        criados = 0
+        with self.Session() as session:
+            vencidos = (session.query(Recorrente)
+                        .filter(Recorrente.usuario_id == usuario_id, Recorrente.ativo.is_(True),
+                                Recorrente.proxima <= hoje)
+                        .with_for_update().all())
+            for rec in vencidos:
+                voltas = 0
+                while rec.proxima <= hoje and voltas < 60:  # limite de segurança
+                    session.add(Despesa(usuario_id=usuario_id, descricao=rec.descricao, valor=rec.valor,
+                                        moeda=rec.moeda, categoria=rec.categoria,
+                                        data_hora=datetime(rec.proxima.year, rec.proxima.month, rec.proxima.day, 12)))
+                    rec.proxima = proxima_data(rec.proxima, rec.frequencia, rec.dia_base)
+                    criados += 1
+                    voltas += 1
+            if vencidos:
+                session.commit()
+        return criados
+
+    # ------------------------------------------------------------------
+    # Orçamentos por categoria
+    # ------------------------------------------------------------------
+    def listar_orcamentos(self, usuario_id: int) -> list[Orcamento]:
+        with self.Session() as session:
+            return session.query(Orcamento).filter(Orcamento.usuario_id == usuario_id).all()
+
+    def definir_orcamento(self, usuario_id: int, categoria: str, limite: float | None, moeda: str) -> None:
+        """Cria ou atualiza o limite; limite vazio ou zero remove o orçamento."""
+        with self.Session() as session:
+            atual = (session.query(Orcamento)
+                     .filter(Orcamento.usuario_id == usuario_id, Orcamento.categoria == categoria).first())
+            if not limite or limite <= 0:
+                if atual:
+                    session.delete(atual)
+            elif atual:
+                atual.limite = limite
+                atual.moeda = moeda
+            else:
+                session.add(Orcamento(usuario_id=usuario_id, categoria=categoria, limite=limite, moeda=moeda))
+            session.commit()
 
     # ------------------------------------------------------------------
     # Lixeira
@@ -247,6 +323,8 @@ class RepositorioDespesas:
         """Remove o usuário e todos os gastos dele (inclusive da lixeira)."""
         with self.Session() as session:
             session.query(Despesa).filter(Despesa.usuario_id == usuario_id).delete(synchronize_session=False)
+            session.query(Recorrente).filter(Recorrente.usuario_id == usuario_id).delete(synchronize_session=False)
+            session.query(Orcamento).filter(Orcamento.usuario_id == usuario_id).delete(synchronize_session=False)
             session.query(Usuario).filter(Usuario.id == usuario_id).delete(synchronize_session=False)
             session.commit()
 
