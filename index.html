@@ -750,6 +750,8 @@
     <label class="campo">Categoria<select id="fxCategoria"></select></label>
     <label class="campo"><span id="fxDataRotulo">Primeira cobrança</span><input id="fxData" type="date" required>
       <small>Se for hoje ou antes, o gasto já é lançado agora.</small></label>
+    <label class="campo">Última cobrança (opcional)<input id="fxFim" type="date">
+      <small>Deixe vazio se não tem fim. Depois dessa data o app para de lançar.</small></label>
     <p id="fxErro" class="erro"></p>
     <div class="acoes">
       <button type="button" class="btn-sec" id="fxCancelar">Cancelar</button>
@@ -958,11 +960,11 @@ function desenharFixos() {
     return `<div class="cartao-fixo${r.ativo ? "" : " pausado"}">
       <div><div class="desc">${esc(r.descricao)}</div>
         <div class="meta">${FREQ_TEXTO[r.frequencia]} · <span class="tag tag-sm">${esc(r.categoria)}</span></div>
-        <div class="meta">${r.ativo ? `Próxima cobrança: ${fmtDataIso(r.proxima)}` : "Pausado: não lança até você retomar"}</div></div>
+        <div class="meta">${r.encerrado ? `Encerrado em ${fmtDataIso(r.fim)}` : r.ativo ? `Próxima cobrança: ${fmtDataIso(r.proxima)}${r.fim ? ` · termina em ${fmtDataIso(r.fim)}` : ""}` : "Pausado: não lança até você retomar"}</div></div>
       <div class="valor">${conv === null ? fmtMoeda(r.valor, r.moeda) : eur.format(conv)}${outra && conv !== null ? `<span class="orig">${fmtMoeda(r.valor, r.moeda)}</span>` : ""}</div>
       <div class="acoes-item">
         <button type="button" class="btn-mini" data-fx="editar" data-id="${r.id}">Editar</button>
-        <button type="button" class="btn-mini" data-fx="pausar" data-id="${r.id}">${r.ativo ? "Pausar" : "Retomar"}</button>
+        ${r.encerrado ? "" : `<button type="button" class="btn-mini" data-fx="pausar" data-id="${r.id}">${r.ativo ? "Pausar" : "Retomar"}</button>`}
         <button type="button" class="btn-mini perigo" data-fx="apagar" data-id="${r.id}">Apagar</button>
       </div></div>`;
   }).join("") : `<p class="vazio">Nenhum gasto fixo ainda. Toque em “Novo gasto fixo” para cadastrar o primeiro.</p>`;
@@ -982,6 +984,7 @@ function abrirFixo(r) {
   $("fxFreq").value = r ? r.frequencia : "mensal";
   $("fxCategoria").value = r ? r.categoria : "";
   $("fxData").value = r ? r.proxima : chaveDia(new Date());
+  $("fxFim").value = r && r.fim ? r.fim : "";
   $("fxErro").textContent = "";
   $("dlgFixo").showModal();
 }
@@ -992,7 +995,8 @@ $("formFixo").addEventListener("submit", async (ev) => {
   const valor = parseFloat($("fxValor").value);
   if (!$("fxTexto").value.trim() || isNaN(valor) || valor <= 0) { $("fxErro").textContent = "Confira a descrição e o valor."; return; }
   const corpo = { texto: $("fxTexto").value, valor, moeda: $("fxMoeda").value, frequencia: $("fxFreq").value,
-                  categoria: $("fxCategoria").value || null, inicio: $("fxData").value };
+                  categoria: $("fxCategoria").value || null, inicio: $("fxData").value, fim: $("fxFim").value };
+  if ($("fxFim").value && $("fxFim").value < $("fxData").value) { $("fxErro").textContent = "A última cobrança não pode ser antes da primeira."; return; }
   $("fxSalvar").disabled = true;
   try {
     if (fixoEmEdicao) await chamar("/recorrentes/" + fixoEmEdicao.id, { method: "PUT", body: JSON.stringify(corpo) });
@@ -1015,7 +1019,7 @@ $("listaFixos").addEventListener("click", async (ev) => {
   if (b.dataset.fx === "pausar") {
     try {
       await chamar("/recorrentes/" + r.id, { method: "PUT", body: JSON.stringify({
-        texto: r.descricao, valor: r.valor, moeda: r.moeda, frequencia: r.frequencia, categoria: r.categoria, ativo: !r.ativo }) });
+        texto: r.descricao, valor: r.valor, moeda: r.moeda, frequencia: r.frequencia, categoria: r.categoria, ativo: !r.ativo, fim: r.fim || "" }) });
       await Promise.all([carregarRecorrentes(), carregarDespesas()]);
       avisar(r.ativo ? "Gasto fixo pausado." : "Gasto fixo retomado.");
     } catch (e) { avisar(e.message, "erro"); }
@@ -1812,9 +1816,10 @@ async function carregarEu() {
 }
 
 function preencherMoedas() {
-  const lista = (ms) => ms.map((m) => `<option value="${m}">${NOMES_MOEDA[m] || m}</option>`).join("");
+  const nomeMoeda = (m) => { try { return new Intl.DisplayNames(["pt-PT"], { type: "currency" }).of(m); } catch (e) { return m; } };
+  const lista = (ms, longo) => ms.map((m) => `<option value="${m}">${longo ? `${m} · ${nomeMoeda(m)}` : (NOMES_MOEDA[m] || m)}</option>`).join("");
   ["moeda", "edMoeda", "fxMoeda"].forEach((id) => { $(id).innerHTML = lista(estado.moedas); });
-  $("ctMoeda").innerHTML = lista(estado.eu && estado.eu.moedas_padrao || ["EUR", "BRL", "USD", "GBP"]);
+  $("ctMoeda").innerHTML = lista(estado.eu && estado.eu.moedas_padrao || ["EUR", "BRL", "USD", "GBP"], true);
   $("moeda").value = estado.moeda;
 }
 

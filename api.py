@@ -36,7 +36,10 @@ PREFERENCIAS_VALIDAS = {"tema": ("auto", "claro", "escuro"), "por_pagina": (10, 
                         "aba_inicial": ("registros", "resumo"),
                         "formato_data": ("dmy", "mdy", "ymd"), "semana_inicio": ("seg", "dom")}
 FOTO_MAX = 200_000  # caracteres do data URL (~150 KB)
-MOEDAS_FIAT = ("EUR", "BRL", "USD", "GBP")  # moedas comuns (podem ser a moeda padrão)
+# moedas tradicionais com cotação do Banco Central Europeu (Frankfurter); as 4 primeiras aparecem no topo da lista
+MOEDAS_FIAT = ("EUR", "BRL", "USD", "GBP",
+               "AUD", "BGN", "CAD", "CHF", "CNY", "CZK", "DKK", "HKD", "HUF", "IDR", "ILS", "INR", "ISK", "JPY", "KRW",
+               "MXN", "MYR", "NOK", "NZD", "PHP", "PLN", "RON", "SEK", "SGD", "THB", "TRY", "ZAR")
 # moedas digitais: código -> id no CoinGecko
 MOEDAS_CRIPTO = {"BTC": "bitcoin", "ETH": "ethereum", "USDT": "tether",
                  "SOL": "solana", "XRP": "ripple", "BNB": "binancecoin"}
@@ -73,6 +76,7 @@ class RecorrenteEntrada(BaseModel):
     categoria: str | None = None    # vazio = a IA escolhe
     inicio: str | None = None       # "AAAA-MM-DD": primeira cobrança (vazio = hoje)
     ativo: bool | None = None
+    fim: str | None = None          # "AAAA-MM-DD": última cobrança (vazio = sem fim)
 
 class OrcamentoEntrada(BaseModel):
     categoria: str
@@ -195,7 +199,7 @@ def _atualizar_fiat() -> None:
         try:
             bruto = _baixar_json(url)
             taxas = {"EUR": 1.0, **{k: float(v) for k, v in bruto["rates"].items()}}
-            if all(m in taxas for m in MOEDAS_FIAT):
+            if all(m in taxas for m in ("EUR", "BRL", "USD", "GBP")):  # as outras são bônus
                 _cotacoes["fiat"].update(quando=time.time(), taxas=taxas, data=bruto.get("date"))
                 return
         except Exception as erro:
@@ -457,7 +461,9 @@ def mover_para_lixeira(despesa_id: int, usuario: Usuario = Depends(usuario_logad
 def recorrente_para_dict(r: Recorrente) -> dict:
     return {"id": r.id, "descricao": r.descricao, "valor": r.valor, "moeda": r.moeda,
             "categoria": r.categoria, "frequencia": r.frequencia,
-            "proxima": r.proxima.isoformat(), "ativo": bool(r.ativo)}
+            "proxima": r.proxima.isoformat(), "ativo": bool(r.ativo),
+            "fim": r.fim.isoformat() if r.fim else None,
+            "encerrado": bool(r.fim and r.proxima > r.fim)}
 
 def data_do_dia(texto: str | None) -> date | None:
     if not texto:
@@ -473,6 +479,12 @@ def validar_recorrente(e: RecorrenteEntrada) -> None:
     if e.frequencia not in FREQUENCIAS:
         raise HTTPException(status_code=400, detail="Frequência inválida")
 
+def validar_fim(fim: date | None, proxima: date) -> None:
+    if fim and fim < proxima:
+        raise HTTPException(status_code=400, detail="A data de término não pode ser antes da próxima cobrança")
+    if fim and fim > proxima + timedelta(days=366 * 30):
+        raise HTTPException(status_code=400, detail="Data de término muito distante")
+
 @app.get("/recorrentes")
 def listar_recorrentes(usuario: Usuario = Depends(usuario_logado)):
     return [recorrente_para_dict(r) for r in repo.listar_recorrentes(usuario.id)]
@@ -486,10 +498,12 @@ def criar_recorrente(e: RecorrenteEntrada, usuario: Usuario = Depends(usuario_lo
         raise HTTPException(status_code=400, detail="A primeira cobrança não pode ser de mais de 1 ano atrás")
     if inicio > hoje + timedelta(days=366 * 2):
         raise HTTPException(status_code=400, detail="Data de início muito distante")
+    fim = data_do_dia(e.fim)
+    validar_fim(fim, inicio)
     categoria = categoria_valida(e.categoria) or ia.classificar(e.texto)
     repo.salvar(Recorrente(usuario_id=usuario.id, descricao=e.texto, valor=e.valor,
                            moeda=moeda_valida(e.moeda, usuario.moeda), categoria=categoria,
-                           frequencia=e.frequencia, dia_base=inicio.day, proxima=inicio, ativo=True))
+                           frequencia=e.frequencia, dia_base=inicio.day, proxima=inicio, fim=fim, ativo=True))
     repo.lancar_recorrentes(usuario.id, hoje)  # se começa hoje (ou antes), lança já
     return {"ok": True}
 
@@ -509,6 +523,14 @@ def editar_recorrente(rec_id: int, e: RecorrenteEntrada, usuario: Usuario = Depe
     if inicio:  # nova data da próxima cobrança
         campos["proxima"] = inicio
         campos["dia_base"] = inicio.day
+    if e.fim is not None:  # "" remove o término
+        campos["fim"] = data_do_dia(e.fim)
+    proxima = campos.get("proxima", atual.proxima)
+    fim = campos["fim"] if "fim" in campos else atual.fim
+    if "fim" in campos and campos["fim"] != atual.fim or "proxima" in campos:
+        validar_fim(fim, proxima)
+    if campos.get("ativo") and fim and proxima > fim:
+        raise HTTPException(status_code=400, detail="Este gasto fixo já terminou. Mude a data de término para retomar.")
     repo.atualizar_recorrente(rec_id, usuario.id, **campos)
     repo.lancar_recorrentes(usuario.id, datetime.utcnow().date())
     return {"ok": True}

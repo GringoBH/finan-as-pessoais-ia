@@ -58,6 +58,7 @@ class Recorrente(Base):
     frequencia = Column(String, nullable=False)   # semanal, mensal ou anual
     dia_base = Column(Integer, nullable=False)    # dia do mês original (para meses curtos)
     proxima = Column(Date, nullable=False)        # próxima cobrança a lançar
+    fim = Column(Date, nullable=True)             # última data de cobrança (vazio = sem fim)
     ativo = Column(Boolean, nullable=False, default=True)
     criado_em = Column(DateTime, nullable=False, default=datetime.utcnow)
 

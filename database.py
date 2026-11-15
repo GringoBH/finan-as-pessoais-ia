@@ -56,6 +56,9 @@ class RepositorioDespesas:
                     conn.execute(text(f"ALTER TABLE despesas2 ADD COLUMN {nome} {tipo_data}"))
             if "moeda" not in colunas_d:
                 conn.execute(text("ALTER TABLE despesas2 ADD COLUMN moeda VARCHAR NOT NULL DEFAULT 'EUR'"))
+            colunas_r = [c["name"] for c in inspetor.get_columns("recorrentes")]
+            if "fim" not in colunas_r:
+                conn.execute(text("ALTER TABLE recorrentes ADD COLUMN fim DATE"))
             if self.engine.dialect.name == "postgresql":
                 conn.execute(text("ALTER TABLE usuarios ALTER COLUMN email DROP NOT NULL"))
 
@@ -142,13 +145,15 @@ class RepositorioDespesas:
                         .with_for_update().all())
             for rec in vencidos:
                 voltas = 0
-                while rec.proxima <= hoje and voltas < 60:  # limite de segurança
+                while rec.proxima <= hoje and (rec.fim is None or rec.proxima <= rec.fim) and voltas < 60:  # limite de segurança
                     session.add(Despesa(usuario_id=usuario_id, descricao=rec.descricao, valor=rec.valor,
                                         moeda=rec.moeda, categoria=rec.categoria,
                                         data_hora=datetime(rec.proxima.year, rec.proxima.month, rec.proxima.day, 12)))
                     rec.proxima = proxima_data(rec.proxima, rec.frequencia, rec.dia_base)
                     criados += 1
                     voltas += 1
+                if rec.fim is not None and rec.proxima > rec.fim:
+                    rec.ativo = False  # chegou ao fim: não lança mais
             if vencidos:
                 session.commit()
         return criados
