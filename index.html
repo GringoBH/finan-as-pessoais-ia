@@ -107,6 +107,38 @@
     padding: 14px; margin-bottom: 18px;
   }
 
+  .alertas-pop { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 60; width: min(440px, calc(100vw - 20px)); display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+  .alerta-pop { pointer-events: auto; display: flex; gap: 12px; padding: 14px 16px; border-radius: 14px; color: #fff; box-shadow: 0 12px 34px rgba(0,0,0,.4); border: 2px solid rgba(255,255,255,.65); animation: ap-entra .45s cubic-bezier(.2,1.3,.4,1); }
+  .alerta-pop.alerta { background: #b45309; }
+  .alerta-pop.estourou { background: #b42318; animation: ap-entra .45s cubic-bezier(.2,1.3,.4,1), ap-pulsa 1.6s ease-in-out .5s 3; }
+  .ap-icone { font-size: 2rem; line-height: 1; }
+  .ap-corpo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ap-corpo strong { font-size: 1.08rem; }
+  .ap-corpo span { font-size: .95rem; overflow-wrap: anywhere; }
+  .ap-barra { height: 8px; border-radius: 4px; background: rgba(255,255,255,.3); overflow: hidden; }
+  .ap-barra i { display: block; height: 100%; background: #fff; }
+  .ap-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .ap-acoes button { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.8); border-radius: 8px; padding: 8px 14px; min-height: 40px; font-weight: 700; }
+  .ap-acoes button[data-ap=ok] { background: #fff; color: #7a1d12; }
+  @keyframes ap-entra { from { transform: translateY(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes ap-pulsa { 0%, 100% { box-shadow: 0 12px 34px rgba(0,0,0,.4); } 50% { box-shadow: 0 0 0 7px rgba(255,255,255,.55), 0 12px 34px rgba(0,0,0,.4); } }
+  @media (prefers-reduced-motion: reduce) { .alerta-pop, .alerta-pop.estourou { animation: none; } }
+  .aceite { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 12px; font-size: .9rem; color: var(--suave); }
+  .aceite input { width: 22px; height: 22px; margin-top: 1px; flex: none; }
+  .troca.pequeno { font-size: .85rem; }
+  .email-box { margin: -4px 0 12px; font-size: .92rem; }
+  .email-box .ok { color: var(--verde); font-weight: 700; }
+  .email-box .pend { color: #8a5a00; font-weight: 700; margin-bottom: 8px; }
+  [data-tema="escuro"] .email-box .pend { color: #f0c24d; }
+  .legal { max-width: 560px; }
+  .legal-corpo { max-height: 60vh; overflow-y: auto; font-size: .92rem; line-height: 1.5; padding-right: 6px; }
+  .legal-corpo h4 { margin: 14px 0 4px; }
+  .legal-corpo p, .legal-corpo li { margin-bottom: 6px; }
+  .legal-corpo ul { padding-left: 20px; }
+  .c-rep { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+  .c-rep .campo { min-width: 150px; flex: 0 1 220px; }
+  .c-rep small { flex: 1 1 100%; color: var(--suave); }
+
   /* ---------- Abas ---------- */
   .abas { display: flex; gap: 4px; border-bottom: 1px solid var(--linha); margin-bottom: 14px; }
   .abas button {
@@ -472,6 +504,7 @@
   </div>
 </header>
 
+<div id="alertasPop" class="alertas-pop"></div>
 <div id="aviso" class="aviso" role="status" hidden></div>
 
 <main class="miolo">
@@ -483,15 +516,25 @@
     <label class="campo">Senha<input id="loginSenha" type="password" autocomplete="current-password"></label>
     <button id="btnEntrar" class="btn-primario" type="button">Entrar</button>
     <p class="troca">Não tem conta? <a class="link" id="irCadastro">Criar conta</a> · <a class="link" id="irRecuperar">Esqueci a senha</a></p>
+    <p class="troca pequeno"><a class="link" data-legal="termos">Termos de Uso</a> · <a class="link" data-legal="privacidade">Privacidade</a></p>
     <p id="erroLogin" class="erro"></p>
   </section>
 
   <section id="telaRecuperar" class="folha auth" hidden>
     <h2>Esqueci a senha</h2>
-    <label class="campo">Usuário<input id="recUser" autocomplete="username" autocapitalize="none"></label>
-    <label class="campo">Senha nova<input id="recSenha" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
-    <label class="campo">Repetir senha nova<input id="recSenha2" type="password" autocomplete="new-password"></label>
-    <button id="btnRecuperar" class="btn-primario" type="button">Definir senha nova</button>
+    <div id="recPasso1">
+      <p class="nota" style="margin-bottom:12px">Digite seu usuário ou email. Enviamos um código para o email confirmado da conta.</p>
+      <label class="campo">Usuário ou email<input id="recUser" autocomplete="username" autocapitalize="none"></label>
+      <button id="btnPedirCodigo" class="btn-primario" type="button">Enviar código</button>
+    </div>
+    <div id="recPasso2" hidden>
+      <p class="nota" style="margin-bottom:12px">Se a conta existir e tiver email confirmado, o código chegou (olhe também o spam). Vale 15 minutos.</p>
+      <label class="campo">Código de 6 dígitos<input id="recCodigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></label>
+      <label class="campo">Senha nova<input id="recSenha" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
+      <label class="campo">Repetir senha nova<input id="recSenha2" type="password" autocomplete="new-password"></label>
+      <button id="btnRecuperar" class="btn-primario" type="button">Definir senha nova</button>
+      <p class="troca"><a class="link" id="recReenviar">Enviar um código novo</a></p>
+    </div>
     <p class="troca"><a class="link" id="irLoginRec">Voltar para Entrar</a></p>
     <p id="erroRecuperar" class="erro"></p>
   </section>
@@ -500,9 +543,10 @@
   <section id="telaCadastro" class="folha auth" hidden>
     <h2>Criar conta</h2>
     <label class="campo">Usuário<input id="cadUser" autocomplete="username" autocapitalize="none"><small>Mínimo 3 caracteres, sem espaços.</small></label>
-    <label class="campo">Email (opcional)<input id="cadEmail" type="email" autocomplete="email"><small>Servirá para recuperar a senha no futuro.</small></label>
+    <label class="campo">Email<input id="cadEmail" type="email" autocomplete="email" required><small>Enviamos um código para confirmar. Serve para recuperar a senha.</small></label>
     <label class="campo">Senha<input id="cadSenha" type="password" autocomplete="new-password"><small>Mínimo 6 caracteres.</small></label>
     <label class="campo">Repetir senha<input id="cadSenha2" type="password" autocomplete="new-password"></label>
+    <label class="aceite"><input type="checkbox" id="cadTermos"> <span>Li e aceito os <a class="link" data-legal="termos">Termos de Uso</a> e a <a class="link" data-legal="privacidade">Política de Privacidade</a>.</span></label>
     <button id="btnCadastrar" class="btn-primario" type="button">Criar conta</button>
     <p class="troca">Já tem conta? <a class="link" id="irLogin">Entrar</a></p>
     <p id="erroCadastro" class="erro"></p>
@@ -516,6 +560,12 @@
       <label class="campo c-valor">Valor<span class="moeda-grupo"><input id="valor" type="number" step="any" min="0.00000001" inputmode="decimal" required placeholder="0,00"><select id="moeda" aria-label="Moeda"></select></span></label>
       <label class="campo c-data">Data<input id="data" type="date" required></label>
       <button id="btnAdicionar" class="btn-primario">Adicionar gasto</button>
+      <div class="c-rep">
+        <label class="campo">Repetir
+          <select id="repetir"><option value="">Não repete</option><option value="mensal">Todo mês</option><option value="semanal">Toda semana</option><option value="anual">Todo ano</option></select></label>
+        <label class="campo" id="repAteBox" hidden>Última cobrança (opcional)<input id="repAte" type="date"></label>
+        <small id="repDica" hidden>A data acima é a primeira cobrança. O app lança os próximos sozinho. Gerencie em “Gastos fixos”.</small>
+      </div>
     </form>
 
     <nav class="abas" role="tablist" aria-label="Secções">
@@ -527,6 +577,7 @@
 
     <!-- Registros -->
     <section id="abaRegistros">
+      <div class="alerta-orc" id="avisoEmail" hidden><span><strong>Confirme seu email.</strong> Sem isso não dá para recuperar a senha.</span><button type="button" id="verEmail">Confirmar agora</button></div>
       <div class="alerta-orc" id="alertaOrc" hidden></div>
       <div class="barra">
         <input id="busca" type="search" placeholder="Pesquisar por descrição, categoria ou valor" aria-label="Pesquisar gastos">
@@ -632,7 +683,7 @@
 
     <!-- Orçamentos -->
     <section id="abaOrcamentos" class="pag-conta" hidden>
-      <div class="topo-pag"><h2 class="titulo-pag">Orçamentos</h2></div>
+      <div class="topo-pag"><h2 class="titulo-pag">Orçamentos</h2><button type="button" class="btn-sec" id="btnNotif" hidden>Ativar avisos do aparelho</button></div>
       <p class="nota" style="margin-bottom:12px" id="notaOrc"></p>
       <div class="folha resumo-fixos" id="resumoOrc" hidden></div>
       <div class="folha" id="listaOrc"></div>
@@ -655,7 +706,14 @@
         </div>
         <label class="campo">Nome de exibição<input id="pfNome" maxlength="40" placeholder="Como você quer ser chamado" autocomplete="nickname"></label>
         <label class="campo">Usuário<input id="pfLogin" disabled></label>
-        <label class="campo">Email (opcional)<input id="pfEmail" type="email" maxlength="120" autocomplete="email" placeholder="para recuperar a senha no futuro"></label>
+        <label class="campo">Email<input id="pfEmail" type="email" maxlength="120" autocomplete="email" placeholder="para recuperar a senha"></label>
+        <div id="pfEmailBox" class="email-box" hidden>
+          <p id="pfEmailEstado"></p>
+          <div id="pfConfirmar" hidden>
+            <button type="button" class="btn-sec" id="pfEnviarCodigo">Enviar código por email</button>
+            <span class="moeda-grupo" style="margin-top:8px"><input id="pfCodigo" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos" autocomplete="one-time-code"><button type="button" class="btn-primario" id="pfConfirmarCodigo" style="width:auto">Confirmar</button></span>
+          </div>
+        </div>
         <button type="button" class="btn-primario" id="pfSalvar">Salvar perfil</button>
         <p class="msg-ok" id="pfMsg" aria-live="polite"></p>
       </div>
@@ -739,6 +797,14 @@
 </main>
 
 <!-- Editar gasto -->
+<dialog id="dlgLegal">
+  <div class="legal">
+    <h3 id="lgTitulo"></h3>
+    <div id="lgCorpo" class="legal-corpo"></div>
+    <div class="acoes"><button type="button" class="btn-primario" id="lgFechar">Fechar</button></div>
+  </div>
+</dialog>
+
 <dialog id="dlgFixo">
   <form id="formFixo" autocomplete="off">
     <h3 id="fxTitulo">Novo gasto fixo</h3>
@@ -1131,6 +1197,58 @@ function avisoOrcamentoDe(categoria) {
   return null;
 }
 
+/* ============ Alertas de orçamento (tipo mensagem de WhatsApp) ============ */
+const NIVEIS_ALERTA = [80, 100];  // % do limite que dispara o aviso
+function nivelDe(pct) { return NIVEIS_ALERTA.reduce((n, v) => (pct >= v ? v : n), 0); }
+function chaveAlerta(cat, limite) {
+  const a = new Date();
+  return `alertaOrc:${estado.eu ? estado.eu.login : ""}:${a.getFullYear()}-${pad(a.getMonth() + 1)}:${cat}:${limite}`;
+}
+function verificarAlertasOrc() {
+  if (!estado.eu || estado.aba === "orcamentos") return;
+  const gastos = gastoDoMes();
+  for (const [cat, limite] of limitesAtuais()) {
+    const gasto = gastos.get(cat) || 0, pct = gasto / limite * 100, nivel = nivelDe(pct);
+    let visto = 0;
+    try { visto = Number(localStorage.getItem(chaveAlerta(cat, limite))) || 0; } catch (e) {}
+    if (nivel > visto) {
+      try { localStorage.setItem(chaveAlerta(cat, limite), String(nivel)); } catch (e) {}
+      mostrarAlertaPop(cat, gasto, limite, pct, nivel);
+    }
+  }
+}
+function mostrarAlertaPop(cat, gasto, limite, pct, nivel) {
+  const estourou = nivel >= 100;
+  const titulo = estourou ? `${cat}: limite ultrapassado!` : `${cat}: ${Math.floor(pct)}% do limite`;
+  const texto = estourou ? `Você gastou ${eur.format(gasto)} e o limite do mês era ${eur.format(limite)} (passou ${eur.format(gasto - limite)}).`
+                         : `Você já gastou ${eur.format(gasto)} de ${eur.format(limite)}. Faltam ${eur.format(limite - gasto)} este mês.`;
+  const cx = document.createElement("div");
+  cx.className = "alerta-pop " + (estourou ? "estourou" : "alerta"); cx.setAttribute("role", "alert");
+  cx.innerHTML = `<div class="ap-icone" aria-hidden="true">${estourou ? "🚨" : "⚠️"}</div>
+    <div class="ap-corpo"><strong>${esc(titulo)}</strong><span>${esc(texto)}</span>
+      <div class="ap-barra"><i style="width:${Math.min(100, pct).toFixed(0)}%"></i></div>
+      <div class="ap-acoes"><button type="button" data-ap="ver">Ver orçamentos</button><button type="button" data-ap="ok">Entendi</button></div></div>`;
+  cx.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-ap]"); if (!b) return;
+    cx.remove(); if (b.dataset.ap === "ver") mudarAba("orcamentos");
+  });
+  const pilha = $("alertasPop"); pilha.prepend(cx);
+  while (pilha.children.length > 3) pilha.lastChild.remove();
+  try { if (navigator.vibrate) navigator.vibrate(estourou ? [200, 100, 200, 100, 300] : [200, 100, 200]); } catch (e) {}
+  try {  // aviso do aparelho: só aparece se a pessoa permitiu e o app está em segundo plano
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) new Notification(titulo, { body: texto, icon: "icon-192.png" });
+  } catch (e) {}
+}
+function desenharBotaoNotif() {
+  const b = $("btnNotif"); if (!b) return;
+  b.hidden = !("Notification" in window) || Notification.permission !== "default";
+}
+$("btnNotif").addEventListener("click", async () => {
+  try { await Notification.requestPermission(); } catch (e) {}
+  desenharBotaoNotif();
+  avisar(Notification.permission === "granted" ? "Avisos do aparelho ativados (com o app aberto em segundo plano)." : "Avisos do aparelho não foram ativados.");
+});
+
 /* ============ Resumo: período das categorias ============ */
 document.querySelectorAll("[data-catper]").forEach((b) =>
   b.addEventListener("click", () => { estado.catPer = b.dataset.catper; desenharResumo(); }));
@@ -1281,21 +1399,42 @@ $("btnEntrar").addEventListener("click", () =>
 $("loginSenha").addEventListener("keydown", (e) => { if (e.key === "Enter") $("btnEntrar").click(); });
 $("btnCadastrar").addEventListener("click", () => {
   if ($("cadSenha").value !== $("cadSenha2").value) { $("erroCadastro").textContent = "As senhas não coincidem."; return; }
-  enviarAcesso("/registro", { login: $("cadUser").value, email: $("cadEmail").value, senha: $("cadSenha").value }, "erroCadastro", $("btnCadastrar"));
+  if (!$("cadEmail").value.trim()) { $("erroCadastro").textContent = "Informe seu email."; return; }
+  if (!$("cadTermos").checked) { $("erroCadastro").textContent = "Marque que leu e aceita os Termos e a Política de Privacidade."; return; }
+  enviarAcesso("/registro", { login: $("cadUser").value, email: $("cadEmail").value, senha: $("cadSenha").value, aceitou_termos: true }, "erroCadastro", $("btnCadastrar"));
 });
 $("irCadastro").addEventListener("click", () => mostrarTela("cadastro"));
 $("irLogin").addEventListener("click", () => mostrarTela("login"));
-$("irRecuperar").addEventListener("click", () => { mostrarTela("recuperar"); $("recUser").value = $("loginUser").value; });
+$("irRecuperar").addEventListener("click", () => {
+  mostrarTela("recuperar");
+  $("recPasso1").hidden = false; $("recPasso2").hidden = true; $("erroRecuperar").textContent = "";
+  $("recUser").value = $("loginUser").value;
+});
 $("irLoginRec").addEventListener("click", () => mostrarTela("login"));
+async function pedirCodigoRecuperacao() {
+  const erro = $("erroRecuperar");
+  if (!$("recUser").value.trim()) { erro.textContent = "Digite seu usuário ou email."; return; }
+  erro.textContent = "A enviar… se demorar, o servidor está a acordar (até 1 minuto).";
+  $("btnPedirCodigo").disabled = true;
+  try {
+    await chamar("/recuperar-senha/pedir", { method: "POST", body: JSON.stringify({ login: $("recUser").value }) });
+    $("recPasso1").hidden = true; $("recPasso2").hidden = false; erro.textContent = "";
+    $("recCodigo").focus();
+  } catch (e) { erro.textContent = e.message; }
+  finally { $("btnPedirCodigo").disabled = false; }
+}
+$("btnPedirCodigo").addEventListener("click", pedirCodigoRecuperacao);
+$("recReenviar").addEventListener("click", async () => { await pedirCodigoRecuperacao(); if (!$("erroRecuperar").textContent) avisar("Se a conta tiver email confirmado, enviamos um código novo."); });
 $("btnRecuperar").addEventListener("click", async () => {
   const erro = $("erroRecuperar");
+  if (!/^\d{6}$/.test($("recCodigo").value.trim())) { erro.textContent = "O código tem 6 dígitos."; return; }
   if ($("recSenha").value !== $("recSenha2").value) { erro.textContent = "As senhas novas não coincidem."; return; }
-  erro.textContent = "A processar… se demorar, o servidor está a acordar (até 1 minuto).";
+  erro.textContent = "A processar…";
   $("btnRecuperar").disabled = true;
   try {
-    await chamar("/recuperar-senha", { method: "POST", body: JSON.stringify({ login: $("recUser").value, nova: $("recSenha").value }) });
-    $("loginUser").value = $("recUser").value;
-    $("recSenha").value = $("recSenha2").value = "";
+    await chamar("/recuperar-senha", { method: "POST", body: JSON.stringify({ login: $("recUser").value, codigo: $("recCodigo").value.trim(), nova: $("recSenha").value }) });
+    $("loginUser").value = $("recUser").value.includes("@") ? "" : $("recUser").value;
+    $("recSenha").value = $("recSenha2").value = $("recCodigo").value = "";
     mostrarTela("login");
     $("loginSenha").value = "";
     $("erroLogin").textContent = "";
@@ -1357,6 +1496,7 @@ function desenhar() {
   desenharTabela();
   desenharResumo();
   desenharAlertaOrc();
+  verificarAlertasOrc();
   if (estado.aba === "orcamentos") desenharOrcamentos();
   if (estado.aba === "fixos") desenharFixos();
 }
@@ -1575,7 +1715,7 @@ function mudarAba(aba) {
   desenharResumo();
   if (aba === "lixeira") carregarLixeira();
   if (aba === "fixos") carregarRecorrentes();
-  if (aba === "orcamentos") { carregarOrcamentos(); desenharOrcamentos(); }
+  if (aba === "orcamentos") { carregarOrcamentos(); desenharOrcamentos(); desenharBotaoNotif(); }
   if (aba === "painel") iniciarPainel(); else pararPainel();
 }
 document.querySelectorAll("[data-aba]").forEach((b) => b.addEventListener("click", () => mudarAba(b.dataset.aba)));
@@ -1617,6 +1757,7 @@ $("form").addEventListener("submit", async (ev) => {
   const valor = parseFloat($("valor").value);
   if (!texto) { avisar("Escreva uma descrição.", "erro"); return; }
   if (isNaN(valor) || valor <= 0) { avisar("Informe um valor maior que zero.", "erro"); return; }
+  if ($("repetir").value) { await criarRepetido(texto, valor); return; }
   const corpo = { texto, valor, moeda: $("moeda").value };
   if ($("data").value && $("data").value !== chaveDia(new Date())) corpo.data = $("data").value;
   const botao = $("btnAdicionar");
@@ -1628,15 +1769,39 @@ $("form").addEventListener("submit", async (ev) => {
     $("data").value = chaveDia(new Date());
     estado.pagina = 1;
     await carregarDespesas();
-    const maisNovo = estado.despesas.reduce((m, d) => (m === null || d.id > m.id ? d : m), null);
-    const alerta = maisNovo ? avisoOrcamentoDe(maisNovo.categoria) : null;
-    avisar(alerta || "Gasto adicionado.", alerta ? "erro" : undefined);
+    avisar("Gasto adicionado.");
   } catch (e) {
     avisar(e.message, "erro");
   } finally {
     botao.disabled = false; botao.textContent = "Adicionar gasto";
   }
 });
+
+$("repetir").addEventListener("change", () => {
+  const on = !!$("repetir").value;
+  $("repAteBox").hidden = !on; $("repDica").hidden = !on;
+  $("btnAdicionar").textContent = on ? "Adicionar gasto fixo" : "Adicionar gasto";
+  if (!on) $("repAte").value = "";
+});
+async function criarRepetido(texto, valor) {
+  const inicio = $("data").value || chaveDia(new Date()), fim = $("repAte").value;
+  if (fim && fim < inicio) { avisar("A última cobrança não pode ser antes da primeira.", "erro"); return; }
+  const botao = $("btnAdicionar");
+  botao.disabled = true; botao.textContent = "A classificar…";
+  try {
+    await chamar("/recorrentes", { method: "POST", body: JSON.stringify({ texto, valor, moeda: $("moeda").value, frequencia: $("repetir").value, inicio, fim }) });
+    $("form").reset();
+    $("moeda").value = estado.moeda; $("data").value = chaveDia(new Date());
+    $("repetir").dispatchEvent(new Event("change"));
+    estado.pagina = 1;
+    await Promise.all([carregarDespesas(), carregarRecorrentes()]);
+    avisar("Gasto fixo criado. Veja em “Gastos fixos”.");
+  } catch (e) {
+    avisar(e.message, "erro");
+  } finally {
+    botao.disabled = false; botao.textContent = $("repetir").value ? "Adicionar gasto fixo" : "Adicionar gasto";
+  }
+}
 
 let alvo = null; // gasto aberto no diálogo
 $("corpo").addEventListener("click", (ev) => {
@@ -1880,6 +2045,7 @@ function desenharConta() {
   $("pfNome").value = eu.nome || "";
   $("pfLogin").value = eu.login;
   $("pfEmail").value = eu.email || "";
+  desenharEmailEstado();
   $("ctLixeira").value = String(eu.lixeira_dias);
   $("ctMoeda").value = estado.moeda;
   $("cfTema").value = estado.prefs.tema;
@@ -1889,6 +2055,60 @@ function desenharConta() {
   $("cfSemana").value = estado.prefs.semana_inicio;
   $("ctCotacao").textContent = estado.dataCotacao ? `Cotação de ${fmtDataIso(estado.dataCotacao)}.` : "";
 }
+function desenharEmailEstado() {
+  const eu = estado.eu; if (!eu) return;
+  const caixa = $("pfEmailBox"), tem = !!eu.email;
+  caixa.hidden = !tem;
+  $("pfEmailEstado").className = eu.email_verificado ? "ok" : "pend";
+  $("pfEmailEstado").textContent = eu.email_verificado ? "✓ Email confirmado"
+    : eu.email_ativo ? "Email ainda não confirmado" : "Email não confirmado (a confirmação por email ainda não está ativa)";
+  $("pfConfirmar").hidden = !(tem && !eu.email_verificado && eu.email_ativo);
+  $("avisoEmail").hidden = !(eu.email_ativo && !eu.email_verificado);
+}
+$("verEmail").addEventListener("click", () => mudarAba("perfil"));
+$("pfEnviarCodigo").addEventListener("click", async () => {
+  $("pfEnviarCodigo").disabled = true; $("pfMsg").textContent = "A enviar…";
+  try { await chamar("/me/email/codigo", { method: "POST" }); $("pfMsg").textContent = "Código enviado. Veja o email (e o spam)."; $("pfCodigo").focus(); }
+  catch (e) { $("pfMsg").textContent = e.message; }
+  finally { $("pfEnviarCodigo").disabled = false; }
+});
+$("pfConfirmarCodigo").addEventListener("click", async () => {
+  if (!/^\d{6}$/.test($("pfCodigo").value.trim())) { $("pfMsg").textContent = "O código tem 6 dígitos."; return; }
+  try {
+    await chamar("/me/email/confirmar", { method: "POST", body: JSON.stringify({ codigo: $("pfCodigo").value.trim() }) });
+    estado.eu.email_verificado = true; $("pfCodigo").value = ""; desenharConta();
+    $("pfMsg").textContent = "Email confirmado.";
+  } catch (e) { $("pfMsg").textContent = e.message; }
+});
+
+const CONTATO = "SEU_EMAIL_DE_CONTATO";  // troque pelo email onde as pessoas podem falar com você
+const LEGAL = {
+  termos: ["Termos de Uso", `<p><em>Versão de rascunho. Revise antes de abrir ao público.</em></p>
+    <h4>1. O serviço</h4><p>“Minhas Finanças” é um aplicativo para registar e acompanhar os seus gastos pessoais. É uma ferramenta de organização: não é aconselhamento financeiro, fiscal ou de investimento.</p>
+    <h4>2. A sua conta</h4><p>Você é responsável por manter a senha em segurança e pelo que acontece na sua conta. Informe um email real que seja seu. Contas com abuso, automação agressiva ou uso ilegal podem ser suspensas.</p>
+    <h4>3. Os seus dados</h4><p>Os gastos que você regista são seus. Você pode exportá-los em planilha e apagar a conta a qualquer momento, o que remove os dados.</p>
+    <h4>4. Classificação automática e cotações</h4><p>As categorias são sugeridas por inteligência artificial e podem errar; você pode corrigi-las. As cotações de moedas são informativas, vêm de fontes públicas e podem ter atraso ou diferenças em relação ao valor real da operação.</p>
+    <h4>5. Disponibilidade</h4><p>O serviço é oferecido “como está”, sem garantia de funcionamento contínuo. Pode haver interrupções, mudanças ou perda de dados apesar dos nossos cuidados. Guarde cópias importantes (use “Exportar planilha”).</p>
+    <h4>6. Limitação de responsabilidade</h4><p>Na medida permitida pela lei, não nos responsabilizamos por decisões tomadas com base nas informações do aplicativo, nem por perdas indiretas.</p>
+    <h4>7. Alterações</h4><p>Podemos atualizar estes termos. Mudanças relevantes serão avisadas no aplicativo.</p>
+    <h4>8. Contacto</h4><p>Dúvidas: ${CONTATO}</p>`],
+  privacidade: ["Política de Privacidade", `<p><em>Versão de rascunho. Revise antes de abrir ao público.</em></p>
+    <h4>Quem trata os dados</h4><p>O responsável pelo serviço “Minhas Finanças” (contacto: ${CONTATO}).</p>
+    <h4>Que dados guardamos</h4><ul><li>Conta: usuário, email, senha (guardada de forma cifrada, nunca em texto), nome e foto se você colocar.</li><li>Os seus gastos: descrição, valor, moeda, categoria, data. Também gastos fixos e orçamentos.</li><li>Preferências do aplicativo e datas de acesso.</li></ul>
+    <h4>Para que usamos</h4><p>Para o aplicativo funcionar: mostrar os seus gastos e totais, enviar códigos por email (confirmar email e recuperar senha) e proteger a conta. Não vendemos os seus dados nem os usamos para publicidade.</p>
+    <h4>Com quem partilhamos</h4><ul><li><strong>OpenAI</strong>: o texto da descrição de cada gasto é enviado para sugerir a categoria. Evite escrever dados pessoais sensíveis na descrição.</li><li><strong>Brevo</strong>: envia os emails com os códigos (recebe o seu email).</li><li><strong>Render e Neon</strong>: alojam o servidor e a base de dados.</li><li><strong>Frankfurter e CoinGecko</strong>: fornecem cotações. Não recebem dados seus.</li></ul>
+    <h4>Os seus direitos</h4><p>Você pode ver e exportar os seus dados, corrigir o perfil e apagar a conta (Perfil, “Excluir conta”), o que remove os seus dados. Gastos apagados ficam na lixeira pelo prazo que você escolher e depois são eliminados. Para outros pedidos, ou queixas, contacte-nos. Você também pode reclamar à autoridade de proteção de dados (em Portugal, a CNPD).</p>
+    <h4>Segurança e retenção</h4><p>Usamos ligação cifrada (HTTPS), senhas cifradas e limite de tentativas de login. Mantemos os dados enquanto a conta existir.</p>
+    <h4>Administração</h4><p>O administrador do serviço pode ver estatísticas gerais e, em caso de suporte, os registos de uma conta; cada consulta fica registada.</p>`],
+};
+document.addEventListener("click", (ev) => {
+  const l = ev.target.closest("[data-legal]"); if (!l) return;
+  ev.preventDefault();
+  const [titulo, corpo] = LEGAL[l.dataset.legal];
+  $("lgTitulo").textContent = titulo; $("lgCorpo").innerHTML = corpo; $("lgCorpo").scrollTop = 0;
+  $("dlgLegal").showModal();
+});
+$("lgFechar").addEventListener("click", () => $("dlgLegal").close());
 const fmtDataIso = (iso) => { const [a, m, d] = iso.split("-"); return fmtData(new Date(+a, +m - 1, +d)); };
 $("btnAjustarPrazo").addEventListener("click", () => mudarAba("config"));
 

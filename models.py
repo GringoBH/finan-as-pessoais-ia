@@ -20,6 +20,12 @@ class Usuario(Base):
     preferencias = Column(Text, nullable=True)  # JSON: tema, por_pagina, aba_inicial, formato_data, semana_inicio
     criado_em = Column(DateTime, nullable=True, default=datetime.utcnow)
     ultimo_acesso = Column(DateTime, nullable=True)
+    email_verificado = Column(Boolean, nullable=False, default=False)
+    cod_hash = Column(String, nullable=True)      # código de 6 dígitos (guardado em hash)
+    cod_tipo = Column(String, nullable=True)      # "verificar" ou "recuperar"
+    cod_expira = Column(DateTime, nullable=True)
+    cod_tentativas = Column(Integer, nullable=False, default=0)
+    termos_em = Column(DateTime, nullable=True)   # quando aceitou os Termos e a Privacidade
 
 class Despesa(Base):
     __tablename__ = "despesas2"

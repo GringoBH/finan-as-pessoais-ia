@@ -5,13 +5,15 @@ import json
 import time
 import urllib.request
 from datetime import date, datetime, timedelta
-from fastapi import FastAPI, HTTPException, Header, Depends
+from fastapi import FastAPI, HTTPException, Header, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import RepositorioDespesas
 from models import Despesa, Usuario, Recorrente
 from recorrencia import FREQUENCIAS, proxima_data
 from ia import ClassificadorIA, CATEGORIAS, categoria_valida
+from seguranca import (checar_limite, registrar_evento, limpar_eventos, ip_do_pedido, gerar_codigo, hash_codigo,
+                       enviar_email, html_codigo, email_configurado, pode_usar_ia, CODIGO_VALIDADE_MIN, CODIGO_TENTATIVAS)
 
 app = FastAPI()
 app.add_middleware(
@@ -27,9 +29,6 @@ ia = ClassificadorIA()
 # A conta com este usuário vira admin. Defina ADMIN_LOGIN nas variáveis de ambiente do Render.
 ADMIN_LOGIN = (os.getenv("ADMIN_LOGIN") or "").strip().lower()
 PRAZOS_LIXEIRA = (1, 7, 30)  # dias; 1 = 24 horas
-# FASE DE TESTES: permite redefinir a senha só com o usuário, sem email nem código.
-# Antes de abrir o site para clientes reais, troque para False.
-RECUPERACAO_SEM_VERIFICACAO = True
 PREFERENCIAS_PADRAO = {"tema": "auto", "por_pagina": 25, "aba_inicial": "registros",
                        "formato_data": "dmy", "semana_inicio": "seg"}
 PREFERENCIAS_VALIDAS = {"tema": ("auto", "claro", "escuro"), "por_pagina": (10, 25, 50, 100),
@@ -64,6 +63,13 @@ class RegistroEntrada(BaseModel):
     login: str
     senha: str
     email: str | None = None
+    aceitou_termos: bool = False
+
+class CodigoEntrada(BaseModel):
+    codigo: str
+
+class PedirRecuperacao(BaseModel):
+    login: str  # usuário ou email
 
 class LixeiraConfig(BaseModel):
     dias: int
@@ -104,7 +110,8 @@ class PreferenciasEntrada(BaseModel):
     semana_inicio: str | None = None
 
 class RecuperarSenha(BaseModel):
-    login: str
+    login: str  # usuário ou email
+    codigo: str
     nova: str
 
 class ExcluirConta(BaseModel):
@@ -235,6 +242,10 @@ def buscar_cotacoes() -> dict:
     taxas.update(_cotacoes["cripto"]["taxas"] or {})
     return {"base": "EUR", "data": fiat["data"], "taxas": taxas}
 
+def classificar(usuario_id: int, texto: str) -> str:
+    """Pede a categoria à IA, com limite diário por usuário (acima dele, usa "Outros")."""
+    return ia.classificar(texto) if pode_usar_ia(usuario_id) else "Outros"
+
 def moeda_valida(moeda: str | None, padrao: str) -> str:
     moeda = (moeda or padrao or "EUR").strip().upper()
     if moeda not in MOEDAS:
@@ -265,31 +276,65 @@ if ADMIN_LOGIN:
 # ----------------------------------------------------------------------
 # Conta: registro, login, dados da conta
 # ----------------------------------------------------------------------
+def _enviar_codigo(usuario: Usuario, tipo: str) -> None:
+    """Gera um código novo (invalida o anterior) e envia para o email da conta."""
+    codigo = gerar_codigo()
+    titulo = "Confirme seu email" if tipo == "verificar" else "Recuperar senha"
+    enviar_email(usuario.email, f"Minhas Finanças: {titulo.lower()}", html_codigo(titulo, codigo))
+    repo.guardar_codigo(usuario.id, hash_codigo(usuario.id, codigo), tipo,
+                        datetime.utcnow() + timedelta(minutes=CODIGO_VALIDADE_MIN))
+
+def _conferir_codigo(usuario: Usuario, tipo: str, codigo: str) -> None:
+    """Confere o código; falha com mensagem genérica se estiver errado, vencido ou esgotado."""
+    erro = HTTPException(status_code=400, detail="Código inválido ou vencido")
+    if (not usuario.cod_hash or usuario.cod_tipo != tipo or not usuario.cod_expira
+            or usuario.cod_expira < datetime.utcnow() or (usuario.cod_tentativas or 0) >= CODIGO_TENTATIVAS):
+        raise erro
+    if not secrets.compare_digest(hash_codigo(usuario.id, codigo), usuario.cod_hash):
+        repo.falha_no_codigo(usuario.id)
+        raise erro
+
 @app.post("/registro")
-def registro(r: RegistroEntrada):
+def registro(r: RegistroEntrada, pedido: Request):
+    ip = ip_do_pedido(pedido)
+    checar_limite(f"registro:{ip}", 10, 3600)
     login = r.login.strip().lower()
     email = (r.email or "").strip().lower() or None
     if len(login) < 3 or " " in login:
         raise HTTPException(status_code=400, detail="Usuário: mínimo 3 caracteres, sem espaços")
     if len(r.senha) < 6:
         raise HTTPException(status_code=400, detail="Senha: mínimo 6 caracteres")
-    if email and "@" not in email:
-        raise HTTPException(status_code=400, detail="Email inválido")
+    if not email or "@" not in email or len(email) > 120:
+        raise HTTPException(status_code=400, detail="Informe um email válido")
+    if not r.aceitou_termos:
+        raise HTTPException(status_code=400, detail="É preciso aceitar os Termos e a Política de Privacidade")
     if repo.usuario_por_login(login):
         raise HTTPException(status_code=400, detail="Este usuário já existe")
-    if email and repo.usuario_por_email(email):
+    if repo.usuario_por_email(email):
         raise HTTPException(status_code=400, detail="Este email já está em uso")
+    registrar_evento(f"registro:{ip}", 3600)
     usuario = Usuario(login=login, email=email, senha_hash=gerar_hash(r.senha),
-                      is_admin=False, lixeira_dias=7, moeda="EUR")
+                      is_admin=False, lixeira_dias=7, moeda="EUR", termos_em=datetime.utcnow())
     repo.salvar(usuario)
     aplicar_admin(usuario)
+    if email_configurado():
+        try:
+            _enviar_codigo(usuario, "verificar")  # se falhar, a pessoa pede o código de novo no Perfil
+        except HTTPException:
+            pass
     return nova_sessao(usuario)
 
 @app.post("/login")
-def login(c: LoginEntrada):
-    usuario = repo.usuario_por_login(c.login.strip().lower())
+def login(c: LoginEntrada, pedido: Request):
+    nome = c.login.strip().lower()
+    chave_usuario, chave_ip = f"login-usuario:{nome}", f"login-ip:{ip_do_pedido(pedido)}"
+    checar_limite(chave_usuario, 5, 900)   # 5 erros por usuário em 15 min
+    checar_limite(chave_ip, 30, 900)       # 30 erros por aparelho em 15 min
+    usuario = repo.usuario_por_login(nome)
     if not usuario or not senha_correta(c.senha, usuario.senha_hash):
+        registrar_evento(chave_usuario, 900); registrar_evento(chave_ip, 900)
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos")
+    limpar_eventos(chave_usuario)
     aplicar_admin(usuario)
     return nova_sessao(usuario)
 
@@ -304,19 +349,56 @@ def preferencias_do_usuario(usuario: Usuario) -> dict:
         pass
     return prefs
 
+def _achar_conta(identificador: str):
+    ident = identificador.strip().lower()
+    return repo.usuario_por_email(ident) if "@" in ident else repo.usuario_por_login(ident)
+
+@app.post("/recuperar-senha/pedir")
+def pedir_recuperacao(r: PedirRecuperacao, pedido: Request):
+    """Envia um código para o email confirmado da conta. A resposta é sempre a mesma (não revela se a conta existe)."""
+    ip = ip_do_pedido(pedido)
+    checar_limite(f"recuperar-ip:{ip}", 10, 3600)
+    registrar_evento(f"recuperar-ip:{ip}", 3600)
+    if not email_configurado():
+        raise HTTPException(status_code=503, detail="A recuperação por email ainda não está ativa. Fale com o suporte.")
+    usuario = _achar_conta(r.login)
+    if usuario and usuario.email and usuario.email_verificado:
+        checar_limite(f"recuperar-conta:{usuario.id}", 3, 3600)  # no máximo 3 códigos por hora por conta
+        registrar_evento(f"recuperar-conta:{usuario.id}", 3600)
+        _enviar_codigo(usuario, "recuperar")
+    return {"ok": True}
+
 @app.post("/recuperar-senha")
-def recuperar_senha(r: RecuperarSenha):
-    """Esqueci a senha (modo de testes): define uma senha nova só com o usuário."""
-    if not RECUPERACAO_SEM_VERIFICACAO:
-        raise HTTPException(status_code=403, detail="Recuperação de senha indisponível")
-    usuario = repo.usuario_por_login(r.login.strip().lower())
-    if not usuario:
-        raise HTTPException(status_code=400, detail="Usuário não encontrado")
-    if usuario.is_admin or (ADMIN_LOGIN and usuario.login == ADMIN_LOGIN):
-        raise HTTPException(status_code=403, detail="Conta de administrador: não dá para recuperar por aqui")
+def recuperar_senha(r: RecuperarSenha, pedido: Request):
+    ip = ip_do_pedido(pedido)
+    checar_limite(f"recuperar-codigo:{ip}", 15, 3600)
+    registrar_evento(f"recuperar-codigo:{ip}", 3600)
     if len(r.nova) < 6:
         raise HTTPException(status_code=400, detail="Senha nova: mínimo 6 caracteres")
+    usuario = _achar_conta(r.login)
+    if not usuario:
+        raise HTTPException(status_code=400, detail="Código inválido ou vencido")
+    _conferir_codigo(usuario, "recuperar", r.codigo)
     repo.definir_senha(usuario.id, gerar_hash(r.nova), secrets.token_hex(32))  # encerra as sessões antigas
+    repo.limpar_codigo(usuario.id)
+    return {"ok": True}
+
+@app.post("/me/email/codigo")
+def enviar_codigo_email(usuario: Usuario = Depends(usuario_logado)):
+    if not usuario.email:
+        raise HTTPException(status_code=400, detail="Cadastre um email no Perfil primeiro")
+    if usuario.email_verificado:
+        return {"ok": True, "ja_confirmado": True}
+    checar_limite(f"verificar-conta:{usuario.id}", 5, 3600)
+    registrar_evento(f"verificar-conta:{usuario.id}", 3600)
+    _enviar_codigo(usuario, "verificar")
+    return {"ok": True}
+
+@app.post("/me/email/confirmar")
+def confirmar_email(c: CodigoEntrada, usuario: Usuario = Depends(usuario_logado)):
+    atual = repo.usuario_por_id(usuario.id)
+    _conferir_codigo(atual, "verificar", c.codigo)
+    repo.marcar_email_verificado(usuario.id)
     return {"ok": True}
 
 @app.get("/me")
@@ -327,6 +409,8 @@ def meus_dados(usuario: Usuario = Depends(usuario_logado)):
         "foto": usuario.foto,
         "preferencias": preferencias_do_usuario(usuario),
         "email": usuario.email,
+        "email_verificado": bool(usuario.email_verificado),
+        "email_ativo": email_configurado(),
         "is_admin": bool(usuario.is_admin),
         "lixeira_dias": usuario.lixeira_dias,
         "moeda": usuario.moeda or "EUR",
@@ -418,7 +502,7 @@ def excluir_conta(c: ExcluirConta, usuario: Usuario = Depends(usuario_logado)):
 def criar_despesa(entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
     validar_despesa(entrada)
     data_hora = data_hora_da_entrada(entrada.data)
-    categoria = categoria_valida(entrada.categoria) or ia.classificar(entrada.texto)
+    categoria = categoria_valida(entrada.categoria) or classificar(usuario.id, entrada.texto)
     moeda = moeda_valida(entrada.moeda, usuario.moeda)
     repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
                         categoria=categoria, moeda=moeda, data_hora=data_hora))
@@ -440,7 +524,7 @@ def editar_despesa(despesa_id: int, entrada: DespesaEntrada, usuario: Usuario = 
     if escolhida:
         categoria = escolhida  # o usuário escolheu a categoria
     else:
-        categoria = atual.categoria if entrada.texto == atual.descricao else ia.classificar(entrada.texto)
+        categoria = atual.categoria if entrada.texto == atual.descricao else classificar(usuario.id, entrada.texto)
     nova_data = data_hora_da_entrada(entrada.data) if entrada.data else None
     moeda = moeda_valida(entrada.moeda, atual.moeda)
     repo.atualizar_despesa(despesa_id, usuario.id, entrada.texto, entrada.valor, categoria, nova_data, moeda)
@@ -500,7 +584,7 @@ def criar_recorrente(e: RecorrenteEntrada, usuario: Usuario = Depends(usuario_lo
         raise HTTPException(status_code=400, detail="Data de início muito distante")
     fim = data_do_dia(e.fim)
     validar_fim(fim, inicio)
-    categoria = categoria_valida(e.categoria) or ia.classificar(e.texto)
+    categoria = categoria_valida(e.categoria) or classificar(usuario.id, e.texto)
     repo.salvar(Recorrente(usuario_id=usuario.id, descricao=e.texto, valor=e.valor,
                            moeda=moeda_valida(e.moeda, usuario.moeda), categoria=categoria,
                            frequencia=e.frequencia, dia_base=inicio.day, proxima=inicio, fim=fim, ativo=True))
@@ -516,7 +600,7 @@ def editar_recorrente(rec_id: int, e: RecorrenteEntrada, usuario: Usuario = Depe
     campos = {"descricao": e.texto, "valor": e.valor, "frequencia": e.frequencia,
               "moeda": moeda_valida(e.moeda, atual.moeda),
               "categoria": categoria_valida(e.categoria)
-              or (atual.categoria if e.texto == atual.descricao else ia.classificar(e.texto))}
+              or (atual.categoria if e.texto == atual.descricao else classificar(usuario.id, e.texto))}
     if e.ativo is not None:
         campos["ativo"] = e.ativo
     inicio = data_do_dia(e.inicio)

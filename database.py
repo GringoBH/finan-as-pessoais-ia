@@ -46,6 +46,12 @@ class RepositorioDespesas:
                 "preferencias": "TEXT",
                 "criado_em": tipo_data,
                 "ultimo_acesso": tipo_data,
+                "email_verificado": "BOOLEAN NOT NULL DEFAULT FALSE",
+                "cod_hash": "VARCHAR",
+                "cod_tipo": "VARCHAR",
+                "cod_expira": tipo_data,
+                "cod_tentativas": "INTEGER NOT NULL DEFAULT 0",
+                "termos_em": tipo_data,
             }
             for nome, definicao in novas_u.items():
                 if nome not in colunas_u:
@@ -290,8 +296,45 @@ class RepositorioDespesas:
         with self.Session() as session:
             usuario = session.get(Usuario, usuario_id)
             usuario.nome = nome
+            if (email or "") != (usuario.email or ""):
+                usuario.email_verificado = False  # email novo precisa ser confirmado de novo
+                usuario.cod_hash = None
             usuario.email = email
             session.commit()
+
+    # ------------------------------------------------------------------
+    # Códigos por email (confirmar email e recuperar senha)
+    # ------------------------------------------------------------------
+    def guardar_codigo(self, usuario_id: int, hash_: str, tipo: str, expira: datetime) -> None:
+        with self.Session() as session:
+            u = session.get(Usuario, usuario_id)
+            u.cod_hash, u.cod_tipo, u.cod_expira, u.cod_tentativas = hash_, tipo, expira, 0
+            session.commit()
+
+    def falha_no_codigo(self, usuario_id: int) -> None:
+        with self.Session() as session:
+            u = session.get(Usuario, usuario_id)
+            u.cod_tentativas = (u.cod_tentativas or 0) + 1
+            session.commit()
+
+    def limpar_codigo(self, usuario_id: int) -> None:
+        with self.Session() as session:
+            u = session.get(Usuario, usuario_id)
+            u.cod_hash = u.cod_tipo = u.cod_expira = None
+            u.cod_tentativas = 0
+            session.commit()
+
+    def marcar_email_verificado(self, usuario_id: int) -> None:
+        with self.Session() as session:
+            u = session.get(Usuario, usuario_id)
+            u.email_verificado = True
+            u.cod_hash = u.cod_tipo = u.cod_expira = None
+            u.cod_tentativas = 0
+            session.commit()
+
+    def usuario_por_id(self, usuario_id: int):
+        with self.Session() as session:
+            return session.get(Usuario, usuario_id)
 
     def definir_foto(self, usuario_id: int, foto: str | None) -> None:
         with self.Session() as session:
