@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, inspect, text, func
 from sqlalchemy.orm import sessionmaker
-from models import Base, Despesa, Usuario, LogAdmin, Recorrente, Orcamento
+from models import Base, Despesa, Usuario, LogAdmin, Recorrente, Orcamento, InscricaoPush, AvisoOrcamento
 from recorrencia import proxima_data
 
 load_dotenv()
@@ -167,6 +167,44 @@ class RepositorioDespesas:
     # ------------------------------------------------------------------
     # Orçamentos por categoria
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Notificações push
+    # ------------------------------------------------------------------
+    def salvar_inscricao(self, usuario_id: int, endpoint: str, p256dh: str, auth: str) -> None:
+        with self.Session() as session:
+            ins = session.query(InscricaoPush).filter(InscricaoPush.endpoint == endpoint).first()
+            if ins:  # o mesmo aparelho pode trocar de conta
+                ins.usuario_id, ins.p256dh, ins.auth = usuario_id, p256dh, auth
+            else:
+                session.add(InscricaoPush(usuario_id=usuario_id, endpoint=endpoint, p256dh=p256dh, auth=auth))
+            session.commit()
+
+    def listar_inscricoes(self, usuario_id: int) -> list[InscricaoPush]:
+        with self.Session() as session:
+            return session.query(InscricaoPush).filter(InscricaoPush.usuario_id == usuario_id).all()
+
+    def apagar_inscricao(self, endpoint: str, usuario_id: int | None = None) -> None:
+        with self.Session() as session:
+            consulta = session.query(InscricaoPush).filter(InscricaoPush.endpoint == endpoint)
+            if usuario_id is not None:
+                consulta = consulta.filter(InscricaoPush.usuario_id == usuario_id)
+            consulta.delete(synchronize_session=False)
+            session.commit()
+
+    def subir_aviso_orcamento(self, usuario_id: int, categoria: str, mes: str, limite: float, nivel: int) -> bool:
+        """Registra o nível avisado. Devolve True só se é um aviso novo (nível maior ou limite diferente)."""
+        with self.Session() as session:
+            aviso = (session.query(AvisoOrcamento)
+                     .filter_by(usuario_id=usuario_id, categoria=categoria, mes=mes).first())
+            if aviso and aviso.nivel >= nivel and abs(aviso.limite - limite) < 0.01:
+                return False
+            if aviso:
+                aviso.nivel, aviso.limite = nivel, limite
+            else:
+                session.add(AvisoOrcamento(usuario_id=usuario_id, categoria=categoria, mes=mes, limite=limite, nivel=nivel))
+            session.commit()
+            return True
+
     def listar_orcamentos(self, usuario_id: int) -> list[Orcamento]:
         with self.Session() as session:
             return session.query(Orcamento).filter(Orcamento.usuario_id == usuario_id).all()
@@ -373,6 +411,8 @@ class RepositorioDespesas:
             session.query(Despesa).filter(Despesa.usuario_id == usuario_id).delete(synchronize_session=False)
             session.query(Recorrente).filter(Recorrente.usuario_id == usuario_id).delete(synchronize_session=False)
             session.query(Orcamento).filter(Orcamento.usuario_id == usuario_id).delete(synchronize_session=False)
+            session.query(InscricaoPush).filter(InscricaoPush.usuario_id == usuario_id).delete(synchronize_session=False)
+            session.query(AvisoOrcamento).filter(AvisoOrcamento.usuario_id == usuario_id).delete(synchronize_session=False)
             session.query(Usuario).filter(Usuario.id == usuario_id).delete(synchronize_session=False)
             session.commit()
 

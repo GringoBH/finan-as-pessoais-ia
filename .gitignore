@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 financas.db
 .idea/
+backups/
+backup_*.json

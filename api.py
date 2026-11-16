@@ -5,13 +5,14 @@ import json
 import time
 import urllib.request
 from datetime import date, datetime, timedelta
-from fastapi import FastAPI, HTTPException, Header, Depends, Request
+from fastapi import FastAPI, HTTPException, Header, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from database import RepositorioDespesas
 from models import Despesa, Usuario, Recorrente
 from recorrencia import FREQUENCIAS, proxima_data
 from ia import ClassificadorIA, CATEGORIAS, categoria_valida
+from push import chave_publica, avisar_orcamentos
 from seguranca import (checar_limite, registrar_evento, limpar_eventos, ip_do_pedido, gerar_codigo, hash_codigo,
                        enviar_email, html_codigo, email_configurado, pode_usar_ia, CODIGO_VALIDADE_MIN, CODIGO_TENTATIVAS)
 
@@ -83,6 +84,13 @@ class RecorrenteEntrada(BaseModel):
     inicio: str | None = None       # "AAAA-MM-DD": primeira cobrança (vazio = hoje)
     ativo: bool | None = None
     fim: str | None = None          # "AAAA-MM-DD": última cobrança (vazio = sem fim)
+
+class InscricaoEntrada(BaseModel):
+    endpoint: str
+    keys: dict
+
+class CancelarPush(BaseModel):
+    endpoint: str
 
 class OrcamentoEntrada(BaseModel):
     categoria: str
@@ -499,14 +507,39 @@ def excluir_conta(c: ExcluirConta, usuario: Usuario = Depends(usuario_logado)):
 # Gastos
 # ----------------------------------------------------------------------
 @app.post("/despesas")
-def criar_despesa(entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
+def criar_despesa(entrada: DespesaEntrada, tarefas: BackgroundTasks, usuario: Usuario = Depends(usuario_logado)):
     validar_despesa(entrada)
     data_hora = data_hora_da_entrada(entrada.data)
     categoria = categoria_valida(entrada.categoria) or classificar(usuario.id, entrada.texto)
     moeda = moeda_valida(entrada.moeda, usuario.moeda)
     repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
                         categoria=categoria, moeda=moeda, data_hora=data_hora))
+    tarefas.add_task(conferir_orcamentos, usuario)
     return {"descricao": entrada.texto, "valor": entrada.valor, "moeda": moeda, "categoria": categoria}
+
+def conferir_orcamentos(usuario: Usuario) -> None:
+    """Depois de salvar um gasto: avisa por push se algum orçamento chegou a 80% ou 100%."""
+    try:
+        avisar_orcamentos(repo, usuario, buscar_cotacoes()["taxas"])
+    except Exception as erro:
+        print("Falha ao conferir orçamentos:", erro)
+
+@app.get("/push/chave")
+def chave_push(usuario: Usuario = Depends(usuario_logado)):
+    return {"chave": chave_publica()}
+
+@app.post("/push/inscrever")
+def inscrever_push(i: InscricaoEntrada, usuario: Usuario = Depends(usuario_logado)):
+    p256dh, auth = i.keys.get("p256dh"), i.keys.get("auth")
+    if not (i.endpoint.startswith("https://") and len(i.endpoint) < 1000 and isinstance(p256dh, str) and isinstance(auth, str)):
+        raise HTTPException(status_code=400, detail="Inscrição inválida")
+    repo.salvar_inscricao(usuario.id, i.endpoint, p256dh, auth)
+    return {"ok": True}
+
+@app.post("/push/cancelar")
+def cancelar_push(c: CancelarPush, usuario: Usuario = Depends(usuario_logado)):
+    repo.apagar_inscricao(c.endpoint, usuario.id)
+    return {"ok": True}
 
 @app.get("/despesas")
 def listar_despesas(usuario: Usuario = Depends(usuario_logado)):
@@ -514,7 +547,7 @@ def listar_despesas(usuario: Usuario = Depends(usuario_logado)):
     return [despesa_para_dict(d) for d in repo.listar(usuario.id)]
 
 @app.put("/despesas/{despesa_id}")
-def editar_despesa(despesa_id: int, entrada: DespesaEntrada, usuario: Usuario = Depends(usuario_logado)):
+def editar_despesa(despesa_id: int, entrada: DespesaEntrada, tarefas: BackgroundTasks, usuario: Usuario = Depends(usuario_logado)):
     validar_despesa(entrada)
     atual = repo.buscar_despesa(despesa_id, usuario.id)
     if not atual:
@@ -528,6 +561,7 @@ def editar_despesa(despesa_id: int, entrada: DespesaEntrada, usuario: Usuario = 
     nova_data = data_hora_da_entrada(entrada.data) if entrada.data else None
     moeda = moeda_valida(entrada.moeda, atual.moeda)
     repo.atualizar_despesa(despesa_id, usuario.id, entrada.texto, entrada.valor, categoria, nova_data, moeda)
+    tarefas.add_task(conferir_orcamentos, usuario)
     return {"ok": True, "categoria": categoria}
 
 @app.delete("/despesas/{despesa_id}")

@@ -40,6 +40,29 @@ class Despesa(Base):
     apagado_em = Column(DateTime, nullable=True)  # preenchido = está na lixeira
     expira_em = Column(DateTime, nullable=True)   # quando a lixeira apaga de vez
 
+class InscricaoPush(Base):
+    """Aparelho que aceitou receber notificações (uma pessoa pode ter vários)."""
+    __tablename__ = "inscricoes_push"
+
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    endpoint = Column(Text, nullable=False, unique=True)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    criado_em = Column(DateTime, nullable=True, default=datetime.utcnow)
+
+class AvisoOrcamento(Base):
+    """Último nível de aviso (80 ou 100) já enviado por push, por categoria e mês."""
+    __tablename__ = "avisos_orcamento"
+    __table_args__ = (UniqueConstraint("usuario_id", "categoria", "mes", name="uq_aviso_orc"),)
+
+    id = Column(Integer, primary_key=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    categoria = Column(String, nullable=False)
+    mes = Column(String, nullable=False)       # "AAAA-MM"
+    limite = Column(Float, nullable=False)     # limite no momento do aviso
+    nivel = Column(Integer, nullable=False)
+
 class LogAdmin(Base):
     """Registra quando o admin abre os registros de um usuário."""
     __tablename__ = "log_admin"

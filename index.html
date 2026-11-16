@@ -71,6 +71,41 @@
   /* ---------- Estrutura ---------- */
   .miolo { max-width: 1040px; margin: 0 auto; padding: 18px 16px 120px; }
   .folha { background: var(--folha); border: 1px solid var(--linha); border-radius: var(--raio); }
+  /* ---------- Página inicial ---------- */
+  .inicio { max-width: 760px; margin: 0 auto; padding: 8px 0 28px; }
+  .ini-hero { padding: 28px 4px 8px; margin-bottom: 14px; }
+  .ini-hero h1 { font-size: clamp(1.9rem, 7.5vw, 3rem); line-height: 1.08; letter-spacing: -.02em; margin: 0 0 14px; max-width: 14em; color: var(--fundo); }
+  .ini-sub { font-size: 1.1rem; color: var(--suave); max-width: 34em; margin: 0 0 20px; }
+  .ini-botoes { display: flex; flex-wrap: wrap; gap: 10px; }
+  .btn-ouro, .btn-contorno { min-height: 48px; padding: 12px 22px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+  .btn-ouro { background: var(--ouro); color: #3b2a00; border: 0; }
+  .btn-contorno { background: transparent; color: var(--fundo); border: 2px solid var(--fundo); }
+  .ini-nota { margin: 12px 0 0; font-size: .9rem; color: var(--suave); }
+  .ini-exemplo { position: relative; margin: 26px 0; padding: 20px 18px 16px; border-radius: 16px; background: var(--fundo); color: #ecfdf5; max-width: 420px; box-shadow: 0 14px 34px rgba(6, 78, 59, .28); }
+  .ini-etiqueta { position: absolute; top: 10px; right: 14px; font-size: .78rem; color: var(--menta); opacity: .85; }
+  .ini-total { display: flex; flex-direction: column; margin-bottom: 14px; }
+  .ini-total span { font-size: .9rem; color: var(--menta); }
+  .ini-total strong { font-size: 2rem; line-height: 1.1; }
+  .ini-cat { margin-bottom: 10px; }
+  .ini-cat div { display: flex; justify-content: space-between; font-size: .92rem; margin-bottom: 4px; }
+  .ini-cat i { display: block; height: 7px; border-radius: 4px; background: rgba(255,255,255,.14); position: relative; overflow: hidden; }
+  .ini-cat i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p); background: var(--menta); border-radius: 4px; }
+  .ini-alerta { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: #b45309; color: #fff; font-weight: 700; font-size: .92rem; }
+  .ini-lista { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 14px; }
+  .ini-lista li { padding-left: 14px; border-left: 4px solid var(--verde); color: var(--suave); }
+  .ini-lista strong { display: block; color: var(--tinta); }
+  .ini-fim { text-align: center; }
+  .ini-fim .btn-primario { width: auto; padding: 12px 26px; }
+  @media (min-width: 720px) {
+    .inicio { display: grid; grid-template-columns: 1.1fr .9fr; column-gap: 32px; align-items: start; }
+    .ini-hero { grid-column: 1; grid-row: 1; padding-top: 40px; }
+    .ini-exemplo { grid-column: 2; grid-row: 1 / span 2; margin-top: 40px; }
+    .ini-lista { grid-column: 1; grid-row: 2; }
+    .ini-fim { grid-column: 1 / -1; }
+  }
+  [data-tema="escuro"] .ini-hero h1, [data-tema="escuro"] .btn-contorno { color: var(--menta); }
+  [data-tema="escuro"] .btn-contorno { border-color: var(--menta); }
+
   .auth { max-width: 400px; margin: 28px auto 0; padding: 22px; }
   .auth h2 { font-size: 1.25rem; margin-bottom: 14px; }
   .auth .campo { margin-bottom: 12px; }
@@ -510,6 +545,41 @@
 <main class="miolo">
 
   <!-- Entrar -->
+  <!-- Página inicial (antes do login) -->
+  <section id="telaInicio" class="inicio" hidden>
+    <div class="ini-hero">
+      <h1>Veja para onde vai o seu dinheiro.</h1>
+      <p class="ini-sub">Anote um gasto em segundos. A inteligência artificial escolhe a categoria, o app converte as moedas e avisa quando você está perto do limite do mês.</p>
+      <div class="ini-botoes">
+        <button type="button" class="btn-ouro" id="iniCriar">Criar conta grátis</button>
+        <button type="button" class="btn-contorno" id="iniEntrar">Já tenho conta</button>
+      </div>
+      <p class="ini-nota">Funciona no celular e no computador. Dá para instalar como app.</p>
+    </div>
+
+    <div class="ini-exemplo" aria-label="Exemplo de como o app mostra seus gastos">
+      <span class="ini-etiqueta">Exemplo</span>
+      <div class="ini-total"><span>Este mês</span><strong>264,49 €</strong></div>
+      <div class="ini-cat"><div><span>Alimentação</span><span>112,40 €</span></div><i style="--p:88%"></i></div>
+      <div class="ini-cat"><div><span>Transporte</span><span>61,00 €</span></div><i style="--p:48%"></i></div>
+      <div class="ini-cat"><div><span>Contas</span><span>45,29 €</span></div><i style="--p:36%"></i></div>
+      <div class="ini-cat"><div><span>Lazer</span><span>45,80 €</span></div><i style="--p:34%"></i></div>
+      <div class="ini-alerta"><span aria-hidden="true">⚠️</span> Alimentação: 88% do limite do mês</div>
+    </div>
+
+    <ul class="ini-lista">
+      <li><strong>A IA categoriza por você.</strong> Escreva “café” ou “metro” e o gasto já cai na categoria certa. Você pode corrigir quando quiser.</li>
+      <li><strong>Mais de 30 moedas e cripto.</strong> Gaste em euro, real, dólar ou libra e veja tudo na sua moeda, com a cotação do dia.</li>
+      <li><strong>Gastos fixos e orçamentos.</strong> Aluguel e assinaturas entram sozinhos. Defina um limite por categoria e receba o aviso antes de estourar.</li>
+      <li><strong>Seus dados são seus.</strong> Exporte tudo para planilha e apague a conta quando quiser.</li>
+    </ul>
+
+    <div class="ini-fim">
+      <button type="button" class="btn-primario" id="iniCriar2">Criar conta grátis</button>
+      <p class="troca pequeno"><a class="link" data-legal="termos">Termos de Uso</a> · <a class="link" data-legal="privacidade">Privacidade</a></p>
+    </div>
+  </section>
+
   <section id="telaLogin" class="folha auth">
     <h2>Entrar</h2>
     <label class="campo">Usuário<input id="loginUser" autocomplete="username" autocapitalize="none"></label>
@@ -683,7 +753,8 @@
 
     <!-- Orçamentos -->
     <section id="abaOrcamentos" class="pag-conta" hidden>
-      <div class="topo-pag"><h2 class="titulo-pag">Orçamentos</h2><button type="button" class="btn-sec" id="btnNotif" hidden>Ativar avisos do aparelho</button></div>
+      <div class="topo-pag"><h2 class="titulo-pag">Orçamentos</h2></div>
+      <div class="folha bloco" style="margin-bottom:12px"><button type="button" class="btn-sec" id="btnNotif" hidden>Ativar avisos neste aparelho</button><p class="nota" id="pushDica" style="margin-top:8px"></p></div>
       <p class="nota" style="margin-bottom:12px" id="notaOrc"></p>
       <div class="folha resumo-fixos" id="resumoOrc" hidden></div>
       <div class="folha" id="listaOrc"></div>
@@ -1235,19 +1306,67 @@ function mostrarAlertaPop(cat, gasto, limite, pct, nivel) {
   const pilha = $("alertasPop"); pilha.prepend(cx);
   while (pilha.children.length > 3) pilha.lastChild.remove();
   try { if (navigator.vibrate) navigator.vibrate(estourou ? [200, 100, 200, 100, 300] : [200, 100, 200]); } catch (e) {}
-  try {  // aviso do aparelho: só aparece se a pessoa permitiu e o app está em segundo plano
-    if ("Notification" in window && Notification.permission === "granted" && document.hidden) new Notification(titulo, { body: texto, icon: "icon-192.png" });
-  } catch (e) {}
 }
-function desenharBotaoNotif() {
-  const b = $("btnNotif"); if (!b) return;
-  b.hidden = !("Notification" in window) || Notification.permission !== "default";
+/* ---- Avisos no celular (push, com o app fechado) ---- */
+const ehIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const ehAppInstalado = () => !!(navigator.standalone || (window.matchMedia && matchMedia("(display-mode: standalone)").matches));
+const base64ParaBytes = (s) => { const p = "=".repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+async function inscricaoAtual() {
+  const reg = await navigator.serviceWorker.ready;
+  return reg.pushManager.getSubscription();
+}
+async function desenharBotaoNotif() {
+  const b = $("btnNotif"), dica = $("pushDica");
+  if (!b) return;
+  const suporta = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  if (!suporta) {
+    b.hidden = true;
+    dica.textContent = ehIos && !ehAppInstalado()
+      ? "Para receber avisos no iPhone, instale o app: toque em Compartilhar e depois em “Adicionar à Tela de Início”. Abra pelo ícone e ative aqui."
+      : "Este navegador não permite avisos com o app fechado.";
+    return;
+  }
+  let sub = null;
+  try { sub = await inscricaoAtual(); } catch (e) {}
+  const ativo = !!sub && Notification.permission === "granted";
+  b.hidden = false;
+  b.textContent = ativo ? "Desativar avisos neste aparelho" : "Ativar avisos neste aparelho";
+  dica.textContent = ativo ? "Avisos ativos: você recebe uma notificação quando chegar a 80% e a 100% de um limite, mesmo com o app fechado."
+    : Notification.permission === "denied" ? "As notificações estão bloqueadas nas configurações do navegador para este site."
+    : "Receba uma notificação quando chegar a 80% e a 100% de um limite, mesmo com o app fechado.";
 }
 $("btnNotif").addEventListener("click", async () => {
-  try { await Notification.requestPermission(); } catch (e) {}
-  desenharBotaoNotif();
-  avisar(Notification.permission === "granted" ? "Avisos do aparelho ativados (com o app aberto em segundo plano)." : "Avisos do aparelho não foram ativados.");
+  $("btnNotif").disabled = true;
+  try {
+    const sub = await inscricaoAtual();
+    if (sub) {
+      await chamar("/push/cancelar", { method: "POST", body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+      await sub.unsubscribe();
+      avisar("Avisos desativados neste aparelho.");
+    } else {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { avisar("Sem permissão para notificações.", "erro"); return; }
+      const { chave } = await chamar("/push/chave");
+      if (!chave) { avisar("Os avisos com o app fechado ainda não estão ativos no servidor.", "erro"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64ParaBytes(chave) });
+      await chamar("/push/inscrever", { method: "POST", body: JSON.stringify(nova.toJSON()) });
+      avisar("Avisos ativados neste aparelho.");
+    }
+  } catch (e) { avisar(e.message || "Não foi possível ativar os avisos.", "erro"); }
+  finally { $("btnNotif").disabled = false; desenharBotaoNotif(); }
 });
+/* ao sair da conta, este aparelho deixa de receber os avisos dela */
+async function desinscreverPush(token) {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const sub = await inscricaoAtual();
+    if (!sub) return;
+    await fetch(API_URL + "/push/cancelar", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": token },
+      body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+    await sub.unsubscribe();
+  } catch (e) { /* melhor esforço */ }
+}
 
 /* ============ Resumo: período das categorias ============ */
 document.querySelectorAll("[data-catper]").forEach((b) =>
@@ -1337,6 +1456,7 @@ async function chamar(caminho, opcoes = {}) {
 
 /* ============ Telas e acesso ============ */
 function mostrarTela(nome) {
+  $("telaInicio").hidden = nome !== "inicio";
   $("telaLogin").hidden = nome !== "login";
   $("telaCadastro").hidden = nome !== "cadastro";
   $("telaRecuperar").hidden = nome !== "recuperar";
@@ -1364,11 +1484,15 @@ function iniciar() {
     carregarLixeira();
     carregarOrcamentos();
   } else {
-    mostrarTela("login");
+    let jaEntrou = false;
+    try { jaEntrou = localStorage.getItem("jaEntrou") === "1"; } catch (e) {}
+    mostrarTela(jaEntrou ? "login" : "inicio");
   }
 }
 
 function sair() {
+  const tokenAntigo = localStorage.getItem("token");
+  if (tokenAntigo) desinscreverPush(tokenAntigo);
   localStorage.removeItem("token");
   estado.despesas = [];
   estado.eu = null; estado.lixeira = []; estado.brutas = []; estado.recorrentes = []; estado.orcamentos = [];
@@ -1386,6 +1510,7 @@ async function enviarAcesso(caminho, corpo, idErro, botao) {
   try {
     const dados = await chamar(caminho, { method: "POST", body: JSON.stringify(corpo) });
     localStorage.setItem("token", dados.token);
+    try { localStorage.setItem("jaEntrou", "1"); } catch (e) {}
     iniciar();
   } catch (e) {
     $(idErro).textContent = e.message;
@@ -1404,6 +1529,9 @@ $("btnCadastrar").addEventListener("click", () => {
   enviarAcesso("/registro", { login: $("cadUser").value, email: $("cadEmail").value, senha: $("cadSenha").value, aceitou_termos: true }, "erroCadastro", $("btnCadastrar"));
 });
 $("irCadastro").addEventListener("click", () => mostrarTela("cadastro"));
+$("iniCriar").addEventListener("click", () => mostrarTela("cadastro"));
+$("iniCriar2").addEventListener("click", () => { mostrarTela("cadastro"); window.scrollTo(0, 0); });
+$("iniEntrar").addEventListener("click", () => mostrarTela("login"));
 $("irLogin").addEventListener("click", () => mostrarTela("login"));
 $("irRecuperar").addEventListener("click", () => {
   mostrarTela("recuperar");
@@ -2081,7 +2209,7 @@ $("pfConfirmarCodigo").addEventListener("click", async () => {
   } catch (e) { $("pfMsg").textContent = e.message; }
 });
 
-const CONTATO = "SEU_EMAIL_DE_CONTATO";  // troque pelo email onde as pessoas podem falar com você
+const CONTATO = "fakelerdo10@gmail.com";  // troque pelo email onde as pessoas podem falar com você
 const LEGAL = {
   termos: ["Termos de Uso", `<p><em>Versão de rascunho. Revise antes de abrir ao público.</em></p>
     <h4>1. O serviço</h4><p>“Minhas Finanças” é um aplicativo para registar e acompanhar os seus gastos pessoais. É uma ferramenta de organização: não é aconselhamento financeiro, fiscal ou de investimento.</p>
