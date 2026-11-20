@@ -62,6 +62,10 @@ class RepositorioDespesas:
                     conn.execute(text(f"ALTER TABLE despesas2 ADD COLUMN {nome} {tipo_data}"))
             if "moeda" not in colunas_d:
                 conn.execute(text("ALTER TABLE despesas2 ADD COLUMN moeda VARCHAR NOT NULL DEFAULT 'EUR'"))
+            if "chave_cliente" not in colunas_d:
+                conn.execute(text("ALTER TABLE despesas2 ADD COLUMN chave_cliente VARCHAR"))
+            # um mesmo código não pode entrar duas vezes na mesma conta (vazios não contam)
+            conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_despesa_chave ON despesas2 (usuario_id, chave_cliente)"))
             colunas_r = [c["name"] for c in inspetor.get_columns("recorrentes")]
             if "fim" not in colunas_r:
                 conn.execute(text("ALTER TABLE recorrentes ADD COLUMN fim DATE"))
@@ -82,6 +86,12 @@ class RepositorioDespesas:
             return (session.query(Despesa)
                     .filter(Despesa.usuario_id == usuario_id, Despesa.apagado_em.is_(None))
                     .all())
+
+    def despesa_por_chave(self, usuario_id: int, chave: str):
+        with self.Session() as session:
+            return (session.query(Despesa)
+                    .filter(Despesa.usuario_id == usuario_id, Despesa.chave_cliente == chave)
+                    .first())
 
     def buscar_despesa(self, despesa_id: int, usuario_id: int):
         with self.Session() as session:

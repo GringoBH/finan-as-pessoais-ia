@@ -39,6 +39,7 @@ class Despesa(Base):
     data_hora = Column(DateTime, nullable=False, default=datetime.utcnow)
     apagado_em = Column(DateTime, nullable=True)  # preenchido = está na lixeira
     expira_em = Column(DateTime, nullable=True)   # quando a lixeira apaga de vez
+    chave_cliente = Column(String, nullable=True)  # código do app para não duplicar gastos enviados offline
 
 class InscricaoPush(Base):
     """Aparelho que aceitou receber notificações (uma pessoa pode ter vários)."""

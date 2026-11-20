@@ -277,6 +277,12 @@
   .linha-orc .trilho i { display: block; height: 100%; background: var(--verde); border-radius: 4px; min-width: 0; }
   .linha-orc .trilho i.alerta { background: var(--ouro); }
   .linha-orc .trilho i.estourou { background: var(--perigo); }
+  .faixa-offline { padding: 9px 14px; margin-bottom: 12px; border-radius: var(--raio); background: #e8ecef; color: #26333b; border: 1px solid #c5cdd3; font-size: .9rem; }
+  .faixa-offline.sync { background: #dff3e8; color: #064e3b; border-color: #a9d9bf; }
+  [data-tema="escuro"] .faixa-offline { background: #263038; color: #d7e0e6; border-color: #3b4852; }
+  [data-tema="escuro"] .faixa-offline.sync { background: #123226; color: #b5e8cd; border-color: #25573f; }
+  .tag.pend { background: #fff4d6; color: #5c3b00; }
+  [data-tema="escuro"] .tag.pend { background: #3a2f10; color: #f6dfa0; }
   .alerta-orc { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; padding: 10px 14px; margin-bottom: 12px; border-radius: var(--raio); background: #fff4d6; color: #5c3b00; border: 1px solid #f1d58a; }
   .alerta-orc button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; padding: 4px; }
   [data-tema="escuro"] .linha-orc .estado-orc.estourou, [data-tema="escuro"] .btn-mini.perigo { color: #ff8a80; }
@@ -647,6 +653,7 @@
 
     <!-- Registros -->
     <section id="abaRegistros">
+      <div id="faixaOffline" class="faixa-offline" hidden role="status"></div>
       <div class="alerta-orc" id="avisoEmail" hidden><span><strong>Confirme seu email.</strong> Sem isso não dá para recuperar a senha.</span><button type="button" id="verEmail">Confirmar agora</button></div>
       <div class="alerta-orc" id="alertaOrc" hidden></div>
       <div class="barra">
@@ -1058,7 +1065,7 @@ function normalizar(d) {
   const sem = infoSemana(dt);
   const meioDia = dt.getUTCHours() === 12 && dt.getUTCMinutes() === 0 && dt.getUTCSeconds() === 0 && dt.getUTCMilliseconds() === 0;
   return {
-    id: d.id, descricao: d.descricao, categoria: d.categoria, valor: d.valor, valorOrig, moeda, semTaxa,
+    id: d.id, pendente: !!d.pendente, descricao: d.descricao, categoria: d.categoria, valor: d.valor, valorOrig, moeda, semTaxa,
     dt, ts: dt.getTime(), semHora: meioDia,
     dia: chaveDia(dt), mes: `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`, ano: String(dt.getFullYear()),
     semana: `${sem.ano}-S${pad(sem.numero)}`, sem,
@@ -1442,7 +1449,13 @@ async function chamar(caminho, opcoes = {}) {
       headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") || "" },
     });
   } catch (e) {
-    throw new Error("Sem ligação ao servidor. Verifique a internet e tente de novo.");
+    if (!opcoes.method || opcoes.method === "GET") {
+      const c = lerCache(caminho);
+      if (c !== null) { marcarOffline(true); return c; }
+    }
+    const err = new Error("Sem ligação ao servidor. Verifique a internet e tente de novo.");
+    err.semRede = true;
+    throw err;
   }
   if (r.status === 401 && localStorage.getItem("token")) { sair(); throw new Error("Sessão expirada. Entre de novo."); }
   let dados = {};
@@ -1451,8 +1464,70 @@ async function chamar(caminho, opcoes = {}) {
     const det = dados.detail;
     throw new Error(typeof det === "string" ? det : "Não foi possível concluir. Tente de novo.");
   }
+  if (!opcoes.method || opcoes.method === "GET") { guardarCache(caminho, dados); marcarOffline(false); }
   return dados;
 }
+
+/* ============ Offline: cache de leitura + fila de gastos ============ */
+const CACHEAVEIS = ["/despesas", "/me", "/orcamentos"];
+function guardarCache(c, d) { if (CACHEAVEIS.includes(c)) try { localStorage.setItem("c:" + c, JSON.stringify(d)); } catch (e) {} }
+function lerCache(c) { if (!CACHEAVEIS.includes(c) || !localStorage.getItem("token")) return null; try { const v = localStorage.getItem("c:" + c); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+function limparCache() { Object.keys(localStorage).filter((k) => k.startsWith("c:")).forEach((k) => localStorage.removeItem(k)); }
+function lerFila() { try { return JSON.parse(localStorage.getItem("fila") || "[]"); } catch (e) { return []; } }
+function gravarFila(f) { try { localStorage.setItem("fila", JSON.stringify(f)); } catch (e) {} }
+const donoFila = () => localStorage.getItem("loginAtual") || "";
+function minhaFila() { return lerFila().filter((x) => x.dono === donoFila()); }
+function novaChave() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2)); }
+function pendentesComoBrutas() {
+  return minhaFila().map((x) => ({
+    id: "p_" + x.chave, descricao: x.texto, categoria: "A classificar", valor: x.valor, moeda: x.moeda || estado.moeda || "EUR",
+    data_hora: (x.data ? x.data + "T12:00:00" : x.criado.slice(0, 19)) + ".000", pendente: true,
+  }));
+}
+function montarLista() { estado.despesas = estado.brutas.concat(pendentesComoBrutas()).map(normalizar); }
+function marcarOffline(v) { estado.offline = v; atualizarFaixa(); }
+function atualizarFaixa() {
+  const n = minhaFila().length, f = $("faixaOffline");
+  if (!f) return;
+  const off = estado.offline || !navigator.onLine;
+  f.hidden = !off && !n;
+  f.className = "faixa-offline" + (off ? "" : " sync");
+  f.textContent = off
+    ? `Sem internet. Pode ver os dados guardados${n ? ` · ${n} gasto${n > 1 ? "s" : ""} a enviar quando voltar` : " e adicionar gastos"}.`
+    : `A enviar ${n} gasto${n > 1 ? "s" : ""} guardado${n > 1 ? "s" : ""}…`;
+}
+let sincronizando = false;
+async function sincronizarFila() {
+  if (sincronizando || !navigator.onLine || !localStorage.getItem("token")) return;
+  let fila = minhaFila();
+  if (!fila.length) { atualizarFaixa(); return; }
+  sincronizando = true; let enviados = 0, descartados = 0;
+  try {
+    for (const x of fila) {
+      try {
+        const corpo = { texto: x.texto, valor: x.valor, moeda: x.moeda, chave: x.chave };
+        if (x.data) corpo.data = x.data;
+        await chamar("/despesas", { method: "POST", body: JSON.stringify(corpo) });
+        enviados++;
+      } catch (e) {
+        if (e.semRede) break;                       // sem net: tenta depois
+        if (!localStorage.getItem("token")) break;  // sessão expirou: mantém a fila
+        descartados++;                              // recusado pelo servidor (dados inválidos)
+      }
+      gravarFila(lerFila().filter((y) => y.chave !== x.chave));
+    }
+  } finally { sincronizando = false; }
+  atualizarFaixa();
+  if (enviados || descartados) {
+    await carregarDespesas();
+    if (enviados) avisar(`${enviados} gasto${enviados > 1 ? "s" : ""} enviado${enviados > 1 ? "s" : ""} e classificado${enviados > 1 ? "s" : ""}.`);
+    if (descartados) avisar(`${descartados} gasto${descartados > 1 ? "s" : ""} não ${descartados > 1 ? "puderam" : "pôde"} ser enviado${descartados > 1 ? "s" : ""}.`, "erro");
+  }
+}
+window.addEventListener("online", () => { atualizarFaixa(); sincronizarFila(); });
+window.addEventListener("offline", () => { estado.offline = true; atualizarFaixa(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) sincronizarFila(); });
+setInterval(sincronizarFila, 30000);
 
 /* ============ Telas e acesso ============ */
 function mostrarTela(nome) {
@@ -1494,6 +1569,7 @@ function sair() {
   const tokenAntigo = localStorage.getItem("token");
   if (tokenAntigo) desinscreverPush(tokenAntigo);
   localStorage.removeItem("token");
+  limparCache();
   estado.despesas = [];
   estado.eu = null; estado.lixeira = []; estado.brutas = []; estado.recorrentes = []; estado.orcamentos = [];
   Object.assign(estado.prefs, { por_pagina: 25, aba_inicial: "registros", formato_data: "dmy", semana_inicio: "seg" });
@@ -1580,7 +1656,7 @@ async function carregarDespesas() {
   estado.carregando = true; desenhar();
   try {
     estado.brutas = await chamar("/despesas");
-    estado.despesas = estado.brutas.map(normalizar);
+    montarLista();
   } catch (e) {
     avisar(e.message, "erro");
   }
@@ -1687,9 +1763,9 @@ function desenharTabela() {
         <td class="col-desc">${esc(d.descricao)}<br><span class="tag tag-sm">${esc(d.categoria)}</span></td>
         <td class="col-cat"><span class="tag">${esc(d.categoria)}</span></td>
         <td class="v">${d.semTaxa ? "—" : eur.format(d.valor)}${d.moeda !== estado.moeda ? `<span class="orig">${fmtMoeda(d.valorOrig, d.moeda)}${d.semTaxa ? " · sem cotação" : ""}</span>` : ""}</td>
-        <td class="ac">
+        <td class="ac">${d.pendente ? `<span class="tag pend">A enviar</span>` : `
           <button class="ico" type="button" data-acao="editar" data-id="${d.id}" aria-label="Editar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
-          <button class="ico apagar" type="button" data-acao="apagar" data-id="${d.id}" aria-label="Apagar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>
+          <button class="ico apagar" type="button" data-acao="apagar" data-id="${d.id}" aria-label="Apagar ${esc(d.descricao)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>`}
         </td></tr>`;
     }).join("");
   }
@@ -1890,8 +1966,19 @@ $("form").addEventListener("submit", async (ev) => {
   if ($("data").value && $("data").value !== chaveDia(new Date())) corpo.data = $("data").value;
   const botao = $("btnAdicionar");
   botao.disabled = true; botao.textContent = "A classificar…";
+  corpo.chave = novaChave();
   try {
-    await chamar("/despesas", { method: "POST", body: JSON.stringify(corpo) });
+    try {
+      if (!navigator.onLine) { const e0 = new Error(); e0.semRede = true; throw e0; }
+      await chamar("/despesas", { method: "POST", body: JSON.stringify(corpo) });
+    } catch (e) {
+      if (!e.semRede) throw e;
+      gravarFila(lerFila().concat([{ dono: donoFila(), chave: corpo.chave, texto, valor, moeda: corpo.moeda, data: corpo.data || "", criado: new Date().toISOString() }]));
+      $("form").reset(); $("moeda").value = estado.moeda; $("data").value = chaveDia(new Date());
+      estado.pagina = 1; marcarOffline(true); montarLista(); desenhar();
+      avisar("Sem internet: gasto guardado. Será enviado e classificado quando voltar a ligação.");
+      return;
+    }
     $("form").reset();
     $("moeda").value = estado.moeda;
     $("data").value = chaveDia(new Date());
@@ -1925,7 +2012,7 @@ async function criarRepetido(texto, valor) {
     await Promise.all([carregarDespesas(), carregarRecorrentes()]);
     avisar("Gasto fixo criado. Veja em “Gastos fixos”.");
   } catch (e) {
-    avisar(e.message, "erro");
+    avisar(e.semRede ? "Gastos fixos precisam de internet." : e.message, "erro");
   } finally {
     botao.disabled = false; botao.textContent = $("repetir").value ? "Adicionar gasto fixo" : "Adicionar gasto";
   }
@@ -2090,6 +2177,8 @@ async function carregarEu() {
   try {
     estado.eu = await chamar("/me");
   } catch (e) { return; }
+  try { localStorage.setItem("loginAtual", estado.eu.login); } catch (e) {}
+  atualizarFaixa(); sincronizarFila();
   $("tabPainel").hidden = !estado.eu.is_admin;
   estado.moeda = estado.eu.moeda || "EUR";
   if (estado.eu.moedas) estado.moedas = estado.eu.moedas;
@@ -2126,7 +2215,7 @@ async function carregarCotacoes() {
 }
 
 function reaplicarMoeda() {
-  estado.despesas = estado.brutas.map(normalizar);
+  montarLista();
   estado.lixeira = estado.lixeira.map((d) => ({ ...normalizar(d.bruto), bruto: d.bruto, expira: d.expira }));
   $("moeda").value = estado.moeda;
   $("ctMoeda").value = estado.moeda;

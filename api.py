@@ -8,6 +8,7 @@ from datetime import date, datetime, timedelta
 from fastapi import FastAPI, HTTPException, Header, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from database import RepositorioDespesas
 from models import Despesa, Usuario, Recorrente
 from recorrencia import FREQUENCIAS, proxima_data
@@ -55,6 +56,7 @@ class DespesaEntrada(BaseModel):
     data: str | None = None  # "AAAA-MM-DD"; se vier vazio, usa o momento atual
     moeda: str | None = None  # se vier vazio, usa a moeda padrão do usuário
     categoria: str | None = None  # se vier vazio, a IA escolhe
+    chave: str | None = None  # código único do app (envio offline): o mesmo código nunca cria dois gastos
 
 class LoginEntrada(BaseModel):
     login: str
@@ -509,11 +511,20 @@ def excluir_conta(c: ExcluirConta, usuario: Usuario = Depends(usuario_logado)):
 @app.post("/despesas")
 def criar_despesa(entrada: DespesaEntrada, tarefas: BackgroundTasks, usuario: Usuario = Depends(usuario_logado)):
     validar_despesa(entrada)
+    chave = (entrada.chave or "").strip()[:64] or None
+    if chave:
+        repetida = repo.despesa_por_chave(usuario.id, chave)
+        if repetida:  # reenvio do mesmo gasto (ex.: a internet caiu depois de enviar): não cria de novo
+            return {"descricao": repetida.descricao, "valor": repetida.valor, "moeda": repetida.moeda,
+                    "categoria": repetida.categoria, "repetido": True}
     data_hora = data_hora_da_entrada(entrada.data)
     categoria = categoria_valida(entrada.categoria) or classificar(usuario.id, entrada.texto)
     moeda = moeda_valida(entrada.moeda, usuario.moeda)
-    repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
-                        categoria=categoria, moeda=moeda, data_hora=data_hora))
+    try:
+        repo.salvar(Despesa(usuario_id=usuario.id, descricao=entrada.texto, valor=entrada.valor,
+                            categoria=categoria, moeda=moeda, data_hora=data_hora, chave_cliente=chave))
+    except IntegrityError:  # dois envios do mesmo código ao mesmo tempo
+        return {"descricao": entrada.texto, "valor": entrada.valor, "moeda": moeda, "categoria": categoria, "repetido": True}
     tarefas.add_task(conferir_orcamentos, usuario)
     return {"descricao": entrada.texto, "valor": entrada.valor, "moeda": moeda, "categoria": categoria}
 
